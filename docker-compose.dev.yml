@@ -1,0 +1,515 @@
+services:
+  # ======================= CORE SERVICES ========================
+  config-server:
+    build:
+      context: .
+      dockerfile: ConfigServerApp/Dockerfile
+    container_name: config-server
+    ports:
+      - "8888:8888"
+    volumes:
+      - ${USERPROFILE}/.m2:/root/.m2
+      - ./logs/ConfigServerApp:/app/logs
+    networks:
+      - branch-picking-network
+    env_file:
+      - .env
+    environment:
+      LOGSTASH_HOST: ${LOGSTASH_HOST}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    restart: unless-stopped
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  eureka-server:
+    build:
+      context: .
+      dockerfile: EurekaServerApp/Dockerfile
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    volumes:
+      - ${USERPROFILE}/.m2:/root/.m2
+      - ./logs/EurekaServerApp:/app/logs
+    networks:
+      - branch-picking-network
+    env_file:
+      - .env
+    environment:
+      LOGSTASH_HOST: ${LOGSTASH_HOST}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/eureka/apps"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Api-GateWay/Dockerfile
+    container_name: api-gateway
+    ports:
+      - "80:80"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    volumes:
+      - ${USERPROFILE}/.m2:/root/.m2
+      - ./logs/api-gateway:/app/logs
+    networks:
+      - branch-picking-network
+    env_file:
+      - .env
+    environment:
+      LOGSTASH_HOST: ${LOGSTASH_HOST}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+
+  # ======================= MICROSERVICES ========================
+  order-service:
+    build:
+      context: .
+      dockerfile: OrderServiceApplication/Dockerfile
+    container_name: order-service
+    expose:
+      - "8081"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      mysql-order:
+        condition: service_started
+      logstash:
+        condition: service_started
+      zipkin:
+        condition: service_started
+    volumes:
+      - ${USERPROFILE}/.m2:/root/.m2
+      - ./logs/OrderServiceApplication:/app/logs
+    env_file:
+      - .env
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  user-registration:
+    build:
+      context: .
+      dockerfile: UserRegistration/Dockerfile
+    container_name: user-registration
+    expose:
+      - "8083"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      mysql-user:
+        condition: service_started
+      logstash:
+        condition: service_started
+      zipkin:
+        condition: service_started
+    volumes:
+      - ${USERPROFILE}/.m2:/root/.m2
+      - ./logs/UserRegistration:/app/logs
+    env_file:
+      - .env
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-user:3306/${USER_DB}
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: PaymentApplication/Dockerfile
+    container_name: payment-service
+    expose:
+      - "8086"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      mysql-payment:
+        condition: service_started
+      logstash:
+        condition: service_started
+      zipkin:
+        condition: service_started
+    volumes:
+      - ${USERPROFILE}/.m2:/root/.m2
+      - ./logs/PaymentApplication:/app/logs
+    env_file:
+      - .env
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-payment:3306/${PAYMENT_DB}
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  product-service:
+    build:
+      context: .
+      dockerfile: ProductServiceApplication/Dockerfile
+    container_name: product-service
+    expose:
+      - "8082"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      mysql-product:
+        condition: service_started
+      logstash:
+        condition: service_started
+      zipkin:
+        condition: service_started
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+    volumes:
+      - ${USERPROFILE}/.m2:/root/.m2
+      - ./logs/ProductServiceApplication:/app/logs
+    env_file:
+      - .env
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  consolidation-service:
+    build:
+      context: .
+      dockerfile: ConsolidationService/Dockerfile
+    container_name: consolidation-service
+    expose:
+      - "8084"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      mysql-consolidation:
+        condition: service_started
+      logstash:
+        condition: service_started
+      zipkin:
+        condition: service_started
+    volumes:
+      - ${USERPROFILE}/.m2:/root/.m2
+      - ./logs/ConsolidationService:/app/logs
+    env_file:
+      - .env
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: NotificationService/Dockerfile
+    container_name: notification-service
+    expose:
+      - "8085"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      mysql-notification:
+        condition: service_started
+      logstash:
+        condition: service_started
+      zipkin:
+        condition: service_started
+      kafka:
+        condition: service_started
+    volumes:
+      - ${USERPROFILE}/.m2:/root/.m2
+      - ./logs/NotificationService:/app/logs
+    env_file:
+      - .env
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ======================= DATABASES ========================
+  mysql-order:
+    image: mysql:8
+    container_name: mysql-order
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${ORDER_DB}
+    volumes:
+      - mysql-order-data:/var/lib/mysql
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+
+  mysql-user:
+    image: mysql:8
+    container_name: mysql-user
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${USER_DB}
+    volumes:
+      - mysql-user-data:/var/lib/mysql
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+
+  mysql-product:
+    image: mysql:8
+    container_name: mysql-product
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${PRODUCT_DB}
+    volumes:
+      - mysql-product-data:/var/lib/mysql
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+
+  mysql-consolidation:
+    image: mysql:8
+    container_name: mysql-consolidation
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${CONSOLIDATION_DB}
+    volumes:
+      - mysql-consolidation-data:/var/lib/mysql
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+
+  mysql-notification:
+    image: mysql:8
+    container_name: mysql-notification
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${NOTIFICATION_DB}
+    volumes:
+      - mysql-notification-data:/var/lib/mysql
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+
+  mysql-payment:
+    image: mysql:8
+    container_name: mysql-payment
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${PAYMENT_DB}
+    volumes:
+      - mysql-payment-data:/var/lib/mysql
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+
+  # ======================= LOGGING & MONITORING ========================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.6.2
+    container_name: elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.6.2
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.6.2
+    container_name: logstash
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
+      - ./logs:/usr/share/logstash/logs
+    depends_on:
+      - elasticsearch
+      - kafka
+      - zookeeper
+    ports:
+      - "5000:5000"
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+
+  # ======================= MESSAGING ========================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.2.1
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:7.2.1
+    container_name: kafka
+    hostname: kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "9092:9092"
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: redis
+    command: redis-server --requirepass master
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "master", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+# ======================= VOLUMES ========================
+volumes:
+  mysql-order-data:
+  mysql-product-data:
+  mysql-user-data:
+  mysql-consolidation-data:
+  mysql-notification-data:
+  mysql-payment-data:
+  redis-data:
+
+# ======================= NETWORKS ========================
+networks:
+  branch-picking-network:
+    driver: bridge

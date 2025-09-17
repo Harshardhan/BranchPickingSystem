@@ -1,0 +1,25 @@
+# Maven build output
+*/target/
+*/logs/
+*.log
+
+# Git & IDE settings
+.git/
+.gitignore
+*.iml
+.factorypath
+.classpath
+.project
+.settings/
+
+# Docker & CI files you don’t want in image
+docker-compose.yml
+.dockerignore
+.env
+README.md
+HELP.md
+*.md
+
+# OS / Editor / Misc
+.DS_Store
+Thumbs.db

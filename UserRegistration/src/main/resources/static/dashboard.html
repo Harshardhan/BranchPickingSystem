@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h2 { color: darkblue; }
+        .profile-card {
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 20px;
+            width: 400px;
+            background: #f9f9f9;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .profile-card h3 { margin-top: 0; color: darkgreen; }
+        .profile-card p { margin: 6px 0; }
+        button {
+            padding: 8px 16px;
+            margin-bottom: 15px;
+            background: darkblue;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover { background: navy; }
+    </style>
+</head>
+<body>
+    <h2>Welcome to Dashboard</h2>
+    <button id="getProfile">Get My Profile</button>
+    <div id="output"></div>
+
+    <script>
+        document.getElementById("getProfile").addEventListener("click", async function () {
+            let token = localStorage.getItem("token");
+
+            if (!token) {
+                alert("No token found, please login first!");
+                window.location.href = "/login.html";
+                return;
+            }
+
+            let response = await fetch("/api/users/me", {
+                method: "GET",
+                headers: { "Authorization": "Bearer " + token }
+            });
+
+            if (response.ok) {
+                let user = await response.json();
+
+                document.getElementById("output").innerHTML = `
+                    <div class="profile-card">
+                        <h3>${user.firstName} ${user.lastName}</h3>
+                        <p><b>Username:</b> ${user.userName}</p>
+                        <p><b>Email:</b> ${user.emailId}</p>
+                        <p><b>Mobile:</b> ${user.mobileNumber}</p>
+                        <p><b>Address:</b> ${user.address}</p>
+                        <p><b>Role:</b> ${user.roles ? user.roles.join(", ") : ""}</p>
+                        <p><b>Status:</b> ${user.userStatus}</p>
+                        <p><b>Email Verified:</b> ${user.emailVerified}</p>
+                        <p><b>Mobile Verified:</b> ${user.mobileVerified}</p>
+                        <p><b>Created At:</b> ${user.createdAt}</p>
+                    </div>
+                `;
+            } else {
+                document.getElementById("output").innerText =
+                    "Error: " + response.status + " " + response.statusText;
+            }
+        });
+    </script>
+</body>
+</html>
