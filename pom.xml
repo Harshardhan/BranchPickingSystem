@@ -1,0 +1,64 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+	<modelVersion>4.0.0</modelVersion>
+
+	<!-- Parent (Spring Boot starter) -->
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>3.2.3</version> <!-- Use stable release -->
+		<relativePath /> <!-- Use global version -->
+	</parent>
+
+	<groupId>com.bps</groupId>
+	<artifactId>BranchPickingSystem</artifactId>
+	<version>1.0.0</version>
+	<packaging>pom</packaging>
+
+	<!-- Modules -->
+	<modules>
+		<module>ConfigServerApp</module>
+		<module>EurekaServerApp</module>
+		<module>API-GateWay</module>
+		<module>OrderServiceApplication</module>
+		<module>NotificationService</module>
+		<module>ProductServiceApplication</module>
+		<module>ConsolidationService</module>
+		<module>Common-Library</module>
+		<module>UserRegistration</module>
+		<module>PaymentApplication</module>
+	</modules>
+
+	<!-- Properties -->
+	<properties>
+		<java.version>17</java.version>
+		<spring-cloud.version>2023.0.1</spring-cloud.version> <!-- Compatible
+		with Spring Boot 3.2.3 -->
+	</properties>
+
+	<!-- Spring Cloud BOM -->
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring-cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<!-- Build plugins -->
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>
