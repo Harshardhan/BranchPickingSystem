@@ -15,6 +15,6 @@ public class NotificationFallback implements NotificationClient {
         NotificationRequest fallbackNotification = new NotificationRequest();
         fallbackNotification.setMessage("Fallback: Notification service is unavailable.");
         fallbackNotification.setCustomerId(notification.getCustomerId());
-        return fallbackNotification;
+         return fallbackNotification;
     }
 }
