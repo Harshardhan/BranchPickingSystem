@@ -1,10 +1,7 @@
 package com.example.demo;
 
-import org.springframework.http.HttpHeaders; // ✅ Correct
-
 import java.time.LocalDateTime;
 import java.util.Collections;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -15,13 +12,6 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.github.resilience4j.retry.annotation.Retry;
 import jakarta.transaction.Transactional;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
-
 import com.example.demo.excpetions.InValidOrderException;
 import com.example.demo.excpetions.OrderAlreadyExistsException;
 import com.example.demo.excpetions.OrderNotFoundException;
@@ -31,107 +21,118 @@ import com.example.demo.excpetions.UnauthorizedOrderAccessException;
 @Transactional
 public class OrderServiceImpl implements OrderService {
 
-	private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
+    private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
 
-	private final OrderRepository orderRepository;
-	private final OrderEventPublisher orderEventPublisher;
-	private final NotificationClient notificationClient;
-	private final ProductClient productClient;
-    private final PaymentClient paymentClient;
-	private static final String CONSOLIDATION_SERVICE_URL = "http://CONSOLIDATION-SERVICE";
+    private final OrderRepository orderRepository;
+    private final OrderEventPublisher orderEventPublisher;
+    private final NotificationClient notificationClient; // remove if unused
+    private final ProductClient productClient;
+    private final PaymentClient paymentClient; // Feign client
 
-	public OrderServiceImpl(OrderRepository orderRepository, OrderEventPublisher orderEventPublisher,
-			NotificationClient notificationClient, ProductClient productClient, PaymentClient paymentClient) {
-		this.orderRepository = orderRepository;
-		this.orderEventPublisher = orderEventPublisher;
-		this.notificationClient = notificationClient;
-		this.productClient = productClient;
-		this.paymentClient = paymentClient;
-	}
+    public OrderServiceImpl(OrderRepository orderRepository, 
+                            OrderEventPublisher orderEventPublisher,
+                            NotificationClient notificationClient, 
+                            ProductClient productClient,
+                            PaymentClient paymentClient) {
+        this.orderRepository = orderRepository;
+        this.orderEventPublisher = orderEventPublisher;
+        this.notificationClient = notificationClient;
+        this.productClient = productClient;
+        this.paymentClient = paymentClient;
+    }
 
-	@Override
-	public Order placeOrder(Order order) throws InValidOrderException, OrderAlreadyExistsException {
+    @Override
+    public Order placeOrder(Order order) throws InValidOrderException, OrderAlreadyExistsException {
+        // 1. Validation
+        if (order == null || order.getCustomerId() == null || 
+            order.getPrice() == null || order.getQuantity() <= 0) {
+            throw new InValidOrderException("Invalid order details.");
+        }
 
-		// Order validation and saving logic
-		if (order == null || order.getCustomerId() == null || order.getPrice() == null || order.getQuantity() <= 0) {
-			throw new InValidOrderException("Invalid order details.");
-		}
+        order.setOrderReference(UUID.randomUUID().toString());
 
-		if (orderRepository.findByOrderReferenceIgnoreCase(order.getOrderReference()).isPresent()) {
-			throw new OrderAlreadyExistsException("Order already exists.");
-		}
-		
+        if (orderRepository.findByOrderReferenceIgnoreCase(order.getOrderReference()).isPresent()) {
+            throw new OrderAlreadyExistsException("Order already exists.");
+        }
 
-		// Step 2: Save order
-		order.setOrderStatus(OrderStatus.PLACED);
-		order.setOrderReference(UUID.randomUUID().toString());
-		order.setProductId(order.getProductId()); 
-		order.setProductName(order.getProductName());
-		Order savedOrder = orderRepository.save(order);
-		logger.info("✅ Order placed successfully: {}", savedOrder.getOrderReference());
+        // 2. Validate product
+        Product product = productClient.getProductById(order.getProductId());
+        if (product == null) {
+            throw new InValidOrderException("Invalid product ID.");
+        }
+        order.setProductName(product.getProductName());
 
-	    // Step 3: Call Payment Service via Feign
-	    try {
-	        PaymentRequest paymentReq = PaymentRequest.builder()
-	                .userId(savedOrder.getCustomerId())
-	                .orderId(savedOrder.getId())
-	                .username(savedOrder.getUserName())
-	                .method(savedOrder.getPaymentMethod())
-	                .amount(savedOrder.getPrice())
-	                .currencyCode("INR")
-	                .emailId(savedOrder.getEmail())
-	                .mobileNumber(savedOrder.getMobileNumber())
-	                .status(PaymentStatus.PENDING)
-	                .paymentTimestamp(LocalDateTime.now())
-	                .build();
+        // 3. Save order
+        order.setOrderStatus(OrderStatus.PLACED);
+        Order savedOrder = orderRepository.save(order);
+        logger.info("✅ Order placed successfully: {}", savedOrder.getOrderReference());
 
-	        orderEventPublisher.publishPaymentEvent(paymentReq);
-	        
-		    logger.info("📤 Kafka event published to payment topic for order: {}", savedOrder.getOrderReference());
-		} catch (Exception e) {
-		    logger.warn("❌ Failed to publish payment event: {}", e.getMessage());
-		}
+        // 4. Call Payment Service via Feign
+        try {
+            PaymentRequest paymentReq = PaymentRequest.builder()
+                    .userId(savedOrder.getCustomerId())
+                    .orderId(savedOrder.getId())
+                    .username(savedOrder.getUserName())
+                    .method(savedOrder.getPaymentMethod())
+                    .amount(savedOrder.getPrice())
+                    .currencyCode("INR")
+                    .emailId(savedOrder.getEmail())
+                    .mobileNumber(savedOrder.getMobileNumber())
+                    .status(PaymentStatus.PENDING)
+                    .paymentTimestamp(LocalDateTime.now())
+                    .build();
 
-		
-		
+            PaymentRequest paymentResponse = paymentClient.processPayment(paymentReq);
 
-		// Step 3: Publish Kafka event to Consolidation Service
-		try {
-		    orderEventPublisher.publishOrderPlacedEvent(savedOrder);
-		    logger.info("📤 Kafka event published to Consolidation topic for order: {}", savedOrder.getOrderReference());
-		} catch (Exception e) {
-		    logger.error("❌ Failed to publish to Kafka for Consolidation: {}", e.getMessage());
-		}
-		Product product = productClient.getProductById(order.getProductId());
-		String productName = product != null ? product.getProductName() : "Unknown";
+            if (paymentResponse != null && paymentResponse.getStatus() == PaymentStatus.SUCCESS) {
+                logger.info("💰 Payment successful for order: {}", savedOrder.getOrderReference());
+            } else {
+                savedOrder.setOrderStatus(OrderStatus.PAYMENT_FAILED);
+                orderRepository.save(savedOrder);
+                logger.warn("❌ Payment failed for order: {}", savedOrder.getOrderReference());
+                return savedOrder;
+            }
+        } catch (Exception e) {
+            savedOrder.setOrderStatus(OrderStatus.PAYMENT_FAILED);
+            orderRepository.save(savedOrder);
+            logger.error("❌ Error calling Payment Service: {}", e.getMessage());
+            return savedOrder;
+        }
 
-		// Step 4: Publish Kafka event to Notification Service
-		// Step 4: Publish Kafka event to Notification Service
-		try {
-		    NotificationRequest notification = new NotificationRequest();
-		    notification.setCustomerId(savedOrder.getCustomerId());
-		    notification.setOrderId(savedOrder.getId());
-		    notification.setOrderReference(savedOrder.getOrderReference());
-		    notification.setEmail(savedOrder.getEmail());
-		    notification.setMessage("Order placed successfully!");
-		    notification.setPrice(savedOrder.getPrice());
-		    notification.setQuantity(savedOrder.getQuantity());
-		    notification.setPaymentMethod(savedOrder.getPaymentMethod());
-		    notification.setAddress(savedOrder.getAddress());
-		    notification.setProductId(savedOrder.getProductId());
-		    notification.setProductName(savedOrder.getProductName()); // ✅ This line is missing
-		    notification.setOrderType(savedOrder.getOrderType());
-		    
-		    notification.setType(NotificationType.EMAIL); // ✅ important
+        // 5. Publish Kafka event to Consolidation Service
+        try {
+            orderEventPublisher.publishOrderPlacedEvent(savedOrder);
+            logger.info("📤 Kafka event published to Consolidation topic for order: {}", savedOrder.getOrderReference());
+        } catch (Exception e) {
+            logger.error("❌ Failed to publish Consolidation event: {}", e.getMessage());
+        }
 
-		    orderEventPublisher.publishNotificationEvent(notification);
-		    logger.info("📤 Kafka event published to Notification topic for order: {}", savedOrder.getOrderReference());
-		} catch (Exception e) {
-		    logger.warn("❌ Failed to publish notification event: {}", e.getMessage());
-		}
-		// Step 5: Return saved order
-		return savedOrder;
-	}
+        // 6. Publish Kafka event to Notification Service
+        try {
+            NotificationRequest notification = new NotificationRequest();
+            notification.setCustomerId(savedOrder.getCustomerId());
+            notification.setOrderId(savedOrder.getId());
+            notification.setOrderReference(savedOrder.getOrderReference());
+            notification.setEmail(savedOrder.getEmail());
+            notification.setMessage("Order placed successfully!");
+            notification.setPrice(savedOrder.getPrice());
+            notification.setQuantity(savedOrder.getQuantity());
+            notification.setPaymentMethod(savedOrder.getPaymentMethod());
+            notification.setAddress(savedOrder.getAddress());
+            notification.setProductId(savedOrder.getProductId());
+            notification.setProductName(savedOrder.getProductName());
+            notification.setOrderType(savedOrder.getOrderType());
+            notification.setType(NotificationType.EMAIL);
+
+            orderEventPublisher.publishNotificationEvent(notification);
+            logger.info("📤 Kafka event published to Notification topic for order: {}", savedOrder.getOrderReference());
+        } catch (Exception e) {
+            logger.warn("❌ Failed to publish notification event: {}", e.getMessage());
+        }
+
+        return savedOrder;
+    }
+
 	// Other methods like updateOrder(), deleteOrder(), etc., remain the same
 
 	@Override

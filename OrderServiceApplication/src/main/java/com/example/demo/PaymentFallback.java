@@ -17,6 +17,6 @@ public class PaymentFallback implements PaymentClient {
         fallbackPayment.setUsername(payment.getUsername());
         fallbackPayment.setUserId(payment.getUserId());
         fallbackPayment.setOrderId(payment.getOrderId());
-		return null;
+		return fallbackPayment;
 	}
 }
