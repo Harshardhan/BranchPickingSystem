@@ -16,7 +16,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @Builder
 
-public class PaymentRequest implements Serializable {
+public class Payment implements Serializable {
 
 	
 	private Long userId;

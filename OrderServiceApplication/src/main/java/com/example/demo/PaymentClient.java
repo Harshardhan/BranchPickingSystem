@@ -8,6 +8,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 public interface PaymentClient {
 
     @PostMapping("/api/payments/process")
-    PaymentRequest processPayment(@RequestBody PaymentRequest payment);
+    Payment processPayment(@RequestBody Payment payment);
 
 }

@@ -55,4 +55,5 @@ public interface PaymentRepository extends  JpaRepository<Payment, Long>{
 	// Count payments by user
 	long countByUserId(Long userId);
 
+
 }

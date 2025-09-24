@@ -36,7 +36,7 @@ public class OrderEventPublisher {
         logger.info("✅ Kafka Notification Event published to topic: {}", notificationTopic);
     }
     
-    public void publishPaymentEvent(PaymentRequest payment) {
+    public void publishPaymentEvent(Payment payment) {
     	kafkaTemplate.send(paymentTopic, String.valueOf(payment.getUserId()), payment);
         logger.info("✅ Kafka Payment Event published to topic: {}", paymentTopic);
     }

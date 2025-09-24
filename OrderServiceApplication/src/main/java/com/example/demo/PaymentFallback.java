@@ -11,9 +11,9 @@ public class PaymentFallback implements PaymentClient {
 
 
 	@Override
-	public PaymentRequest processPayment(PaymentRequest payment) {
+	public Payment processPayment(Payment payment) {
         logger.warn("Payment service is unavailable. Falling back...");
-        PaymentRequest fallbackPayment = new PaymentRequest();
+        Payment fallbackPayment = new Payment();
         fallbackPayment.setUsername(payment.getUsername());
         fallbackPayment.setUserId(payment.getUserId());
         fallbackPayment.setOrderId(payment.getOrderId());

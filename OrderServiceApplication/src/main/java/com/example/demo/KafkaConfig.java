@@ -2,8 +2,7 @@ package com.example.demo;
 
 import java.util.HashMap;
 import java.util.Map;
-
-
+import com.example.demo.Payment;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -41,77 +40,41 @@ public class KafkaConfig {
         return new KafkaTemplate<>(producerFactory());
     }
 
-    // ========== CONSUMER CONFIG ==========
-    @Bean
-    public ConsumerFactory<String, Order> consumerFactory() {
-        Map<String, Object> config = new HashMap<>();
-        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        config.put(ConsumerConfig.GROUP_ID_CONFIG, "order-group");
-        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-
-        JsonDeserializer<Order> deserializer = new JsonDeserializer<>(Order.class);
-        deserializer.setRemoveTypeHeaders(false);
-        deserializer.setUseTypeMapperForKey(false);
-        deserializer.addTrustedPackages("*");
-
-        return new DefaultKafkaConsumerFactory<>(config, new StringDeserializer(), deserializer);
-    }
-
-    @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, Order> kafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, Order> factory = new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(consumerFactory());
-        return factory;
-    }
-    
-    @Bean
-    public ConsumerFactory<String, NotificationRequest> notificationConsumerFactory() {
+    // ========== GENERIC CONSUMER FACTORY ==========
+    private <T> ConsumerFactory<String, T> consumerFactory(Class<T> clazz, String groupId) {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "order-group");
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 
-        JsonDeserializer<NotificationRequest> deserializer = new JsonDeserializer<>(NotificationRequest.class);
+        JsonDeserializer<T> deserializer = new JsonDeserializer<>(clazz);
         deserializer.setRemoveTypeHeaders(false);
         deserializer.setUseTypeMapperForKey(false);
         deserializer.addTrustedPackages("*");
 
         return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), deserializer);
+    }
+
+    private <T> ConcurrentKafkaListenerContainerFactory<String, T> listenerFactory(Class<T> clazz, String groupId) {
+        ConcurrentKafkaListenerContainerFactory<String, T> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(consumerFactory(clazz, groupId));
+        return factory;
+    }
+
+    // ====== Specific Factories ======
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, Order> orderKafkaListenerContainerFactory() {
+        return listenerFactory(Order.class, "order-group");
     }
 
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, NotificationRequest> notificationKafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, NotificationRequest> factory = new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(notificationConsumerFactory());
-        return factory;
-    }
-
-    
-    
-    @Bean
-    public ConsumerFactory<String, PaymentRequest> paymentConsumerFactory() {
-        Map<String, Object> props = new HashMap<>();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "order-group");
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-
-        JsonDeserializer<PaymentRequest> deserializer = new JsonDeserializer<>(PaymentRequest.class);
-        deserializer.setRemoveTypeHeaders(false);
-        deserializer.setUseTypeMapperForKey(false);
-        deserializer.addTrustedPackages("*");
-
-        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), deserializer);
+        return listenerFactory(NotificationRequest.class, "notification-group");
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, PaymentRequest> paymentKafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, PaymentRequest> factory = new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(paymentConsumerFactory());
-        return factory;
+    public ConcurrentKafkaListenerContainerFactory<String, Payment> paymentKafkaListenerContainerFactory() {
+        return listenerFactory(Payment.class, "payment-group");
     }
-
-
 }

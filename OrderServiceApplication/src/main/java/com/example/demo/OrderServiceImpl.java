@@ -25,18 +25,15 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderEventPublisher orderEventPublisher;
-    private final NotificationClient notificationClient; // remove if unused
     private final ProductClient productClient;
     private final PaymentClient paymentClient; // Feign client
 
     public OrderServiceImpl(OrderRepository orderRepository, 
                             OrderEventPublisher orderEventPublisher,
-                            NotificationClient notificationClient, 
                             ProductClient productClient,
                             PaymentClient paymentClient) {
         this.orderRepository = orderRepository;
         this.orderEventPublisher = orderEventPublisher;
-        this.notificationClient = notificationClient;
         this.productClient = productClient;
         this.paymentClient = paymentClient;
     }
@@ -69,7 +66,7 @@ public class OrderServiceImpl implements OrderService {
 
         // 4. Call Payment Service via Feign
         try {
-            PaymentRequest paymentReq = PaymentRequest.builder()
+            Payment paymentReq = Payment.builder()
                     .userId(savedOrder.getCustomerId())
                     .orderId(savedOrder.getId())
                     .username(savedOrder.getUserName())
@@ -82,7 +79,7 @@ public class OrderServiceImpl implements OrderService {
                     .paymentTimestamp(LocalDateTime.now())
                     .build();
 
-            PaymentRequest paymentResponse = paymentClient.processPayment(paymentReq);
+            Payment paymentResponse = paymentClient.processPayment(paymentReq);
 
             if (paymentResponse != null && paymentResponse.getStatus() == PaymentStatus.SUCCESS) {
                 logger.info("💰 Payment successful for order: {}", savedOrder.getOrderReference());

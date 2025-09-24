@@ -55,11 +55,11 @@ public class KafkaConfig {
 
     // For NotificationRequest payloads
     @Bean
-    public ConsumerFactory<String, PaymentRequest> paymentConsumerFactory() {
+    public ConsumerFactory<String, Payment> paymentConsumerFactory() {
         ObjectMapper mapper = new ObjectMapper();
-        JavaType type = mapper.constructType(PaymentRequest.class);
+        JavaType type = mapper.constructType(Payment.class);
 
-        JsonDeserializer<PaymentRequest> deserializer = new JsonDeserializer<>(type, mapper);
+        JsonDeserializer<Payment> deserializer = new JsonDeserializer<>(type, mapper);
         deserializer.addTrustedPackages("*");
         deserializer.setRemoveTypeHeaders(false);
         deserializer.setUseTypeMapperForKey(false);
@@ -73,8 +73,8 @@ public class KafkaConfig {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, PaymentRequest> paymentKafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, PaymentRequest> factory =
+    public ConcurrentKafkaListenerContainerFactory<String, Payment> paymentKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, Payment> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(paymentConsumerFactory());
         factory.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(1000L, 3)));
