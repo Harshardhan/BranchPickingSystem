@@ -10,29 +10,27 @@ public class OrderEventListener {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderEventListener.class);
 
+    // ✅ Use the correct containerFactory bean name
     @KafkaListener(
-    	    topics = "${kafka.topic.order}",
-    	    groupId = "order-group",
-    	    containerFactory = "kafkaListenerContainerFactory"
-    	)
-    	public void consumeOrderEvent(Order order) {
-    	    logger.info("📥 Received Order event: {}", order);
-    	    System.out.println("📨 Sending notification to customer " + order.getOrderStatus());
-    	}
+        topics = "${kafka.topic.order}",
+        groupId = "order-group",
+        containerFactory = "orderKafkaListenerContainerFactory"
+    )
+    public void consumeOrderEvent(Order order) {
+        logger.info("📥 Received Order event: {}", order);
+        System.out.println("📢 Sending notification to customer: " + order.getOrderStatus());
+    }
 
-    	@KafkaListener(
-    	    topics = "${kafka.topic.notification}",
-    	    groupId = "order-group",
-    	    containerFactory = "notificationKafkaListenerContainerFactory"
-    	)
-    	public void listenNotification(NotificationRequest notification) {
-    	    String subject = "Order Confirmation: " + notification.getOrderReference();
-    	    String body = "Hi, your order for " + notification.getProductName() + " has been placed successfully.";
+    @KafkaListener(
+        topics = "${kafka.topic.notification}",
+        groupId = "notification-group",   // ✅ should be notification group, not order-group
+        containerFactory = "notificationKafkaListenerContainerFactory"
+    )
+    public void listenNotification(NotificationRequest notification) {
+        String subject = "Order Confirmation: " + notification.getOrderReference();
+        String body = "Hi, your order for " + notification.getProductName() + " has been placed successfully.";
 
-    	    logger.info("📩 Notification for customerId: {}, Subject: {}", notification.getCustomerId(), subject);
-    	    System.out.println("📩 Message: " + body);
-    	}
-    	
-    	
-    	
+        logger.info("📢 Notification for customerId: {}, Subject: {}", notification.getCustomerId(), subject);
+        System.out.println("📢 Message: " + body);
+    }
 }
