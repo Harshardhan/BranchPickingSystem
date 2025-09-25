@@ -17,7 +17,7 @@ public class OrderEventListener {
     	)
     	public void consumeOrderEvent(Order order) {
     	    logger.info("📥 Received Order event: {}", order);
-    	    System.out.println("📨 Sending notification to customer " + order.getCustomerId());
+    	    System.out.println("📨 Sending notification to customer " + order.getOrderStatus());
     	}
 
     	@KafkaListener(
@@ -32,4 +32,7 @@ public class OrderEventListener {
     	    logger.info("📩 Notification for customerId: {}, Subject: {}", notification.getCustomerId(), subject);
     	    System.out.println("📩 Message: " + body);
     	}
+    	
+    	
+    	
 }

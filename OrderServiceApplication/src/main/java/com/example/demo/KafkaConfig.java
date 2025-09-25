@@ -14,7 +14,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
-
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
@@ -51,7 +50,7 @@ public class KafkaConfig {
         JsonDeserializer<T> deserializer = new JsonDeserializer<>(clazz);
         deserializer.setRemoveTypeHeaders(false);
         deserializer.setUseTypeMapperForKey(false);
-        deserializer.addTrustedPackages("*");
+        deserializer.addTrustedPackages("com.example.demo"); // restrict to your common-library package
 
         return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), deserializer);
     }
@@ -63,7 +62,6 @@ public class KafkaConfig {
     }
 
     // ====== Specific Factories ======
-
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, Order> orderKafkaListenerContainerFactory() {
         return listenerFactory(Order.class, "order-group");
@@ -79,6 +77,7 @@ public class KafkaConfig {
         return listenerFactory(Payment.class, "payment-group");
     }
 
+    // If you want a separate group for "order-events" topic
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, Order> orderEventKafkaListenerContainerFactory() {
         return listenerFactory(Order.class, "order-event-group");
