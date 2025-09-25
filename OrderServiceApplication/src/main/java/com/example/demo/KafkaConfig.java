@@ -2,7 +2,7 @@ package com.example.demo;
 
 import java.util.HashMap;
 import java.util.Map;
-import com.example.demo.Payment;
+
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -40,7 +40,7 @@ public class KafkaConfig {
         return new KafkaTemplate<>(producerFactory());
     }
 
-    // ========== GENERIC CONSUMER FACTORY ==========
+    // ========== GENERIC CONSUMER CONFIG ==========
     private <T> ConsumerFactory<String, T> consumerFactory(Class<T> clazz, String groupId) {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
@@ -63,6 +63,7 @@ public class KafkaConfig {
     }
 
     // ====== Specific Factories ======
+
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, Order> orderKafkaListenerContainerFactory() {
         return listenerFactory(Order.class, "order-group");
@@ -76,5 +77,10 @@ public class KafkaConfig {
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, Payment> paymentKafkaListenerContainerFactory() {
         return listenerFactory(Payment.class, "payment-group");
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, Order> orderEventKafkaListenerContainerFactory() {
+        return listenerFactory(Order.class, "order-event-group");
     }
 }
