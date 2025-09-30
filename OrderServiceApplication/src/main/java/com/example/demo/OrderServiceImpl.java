@@ -75,7 +75,7 @@ public class OrderServiceImpl implements OrderService {
                     .currencyCode("INR")
                     .emailId(savedOrder.getEmail())
                     .mobileNumber(savedOrder.getMobileNumber())
-                    .status(PaymentStatus.PENDING)
+                    .status(PaymentStatus.FAILED)
                     .paymentTimestamp(LocalDateTime.now())
                     .build();
 

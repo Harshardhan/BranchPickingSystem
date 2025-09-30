@@ -47,6 +47,7 @@ public class Order  {
 	private String orderType;
 	private String orderReference;
 	private PaymentMethod paymentMethod;
+	private PaymentStatus paymentStatus;
 	private String email;
 	private String address;
 	private String mobileNumber;
