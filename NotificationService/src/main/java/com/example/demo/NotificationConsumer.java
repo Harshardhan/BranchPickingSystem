@@ -15,10 +15,10 @@ public class NotificationConsumer {
     private static final Logger logger = LoggerFactory.getLogger(NotificationConsumer.class);
 
     @KafkaListener(
-        topics = "notification-topic",
-        groupId = "notification-service",
-        containerFactory = "notificationKafkaListenerContainerFactory"
-    )
+    	    topics = "${kafka.topic.notification}",
+    	    groupId = "notification-service",
+    	    containerFactory = "notificationKafkaListenerContainerFactory"
+    	)
     public void listen(NotificationRequest request) {
     	logger.info("📩 Received Notification for customerId: {}", request.getCustomerId());
     	if (request.getCustomerId() == null || request.getEmail() == null) {

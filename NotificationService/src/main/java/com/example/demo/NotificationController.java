@@ -7,6 +7,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.demo.excpetions.NotificationException;
+import com.example.demo.excpetions.NotificationNotFoundException;
+
 import jakarta.mail.MessagingException;
 
 import java.util.List;

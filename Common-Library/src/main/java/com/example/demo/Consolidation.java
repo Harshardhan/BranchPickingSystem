@@ -1,17 +1,15 @@
 package com.example.demo;
 
 import java.math.BigDecimal;
-
 import java.time.LocalDate;
 import lombok.*;
-
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-
-
 public class Consolidation {
+
+    private Long id;
 
     private Long customerId;
     private Long orderId;
@@ -31,6 +29,5 @@ public class Consolidation {
     private String transactionId;
     private String currency;
     private String remarks;
-    private boolean isConsolidated;
 
 }

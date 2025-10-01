@@ -1,4 +1,4 @@
-package com.example.demo;
+package com.example.demo.excpetions;
 
 public class NotificationException extends Exception{
 
