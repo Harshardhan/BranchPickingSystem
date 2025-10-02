@@ -15,7 +15,7 @@ public class NotificationConsumer {
     private static final Logger logger = LoggerFactory.getLogger(NotificationConsumer.class);
 
     @KafkaListener(
-    	    topics = "${kafka.topic.notification}",
+    		topics = "#{'${kafka.topic.notification:notification-topic}'}",
     	    groupId = "notification-service",
     	    containerFactory = "notificationKafkaListenerContainerFactory"
     	)
