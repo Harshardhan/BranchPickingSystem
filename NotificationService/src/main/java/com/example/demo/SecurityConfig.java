@@ -1,7 +1,6 @@
 package com.example.demo;
 
 
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -37,7 +36,7 @@ public class SecurityConfig {
             .exceptionHandling(e -> e.authenticationEntryPoint(authEntryPoint))
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // always stateless
             .authorizeHttpRequests(auth -> auth
-            	    .requestMatchers(HttpMethod.GET, "/api/notifications/**").permitAll()
+            		.requestMatchers("/api/notifications/**").permitAll()
             	    .anyRequest().authenticated()
             	)
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
