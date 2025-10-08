@@ -157,8 +157,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     public Notification fallbackSendNotification(Notification notification, Throwable t) {
-        logger.error("🔁 Fallback: Failed to send notification for customer ID {}. Reason: {}", notification.getCustomerId(), t.getMessage());
-
+        logger.error("≡ƒöü Fallback: Failed to send notification for customer ID {}.", notification.getCustomerId(), t);
         return Notification.builder()
                 .customerId(notification.getCustomerId())
                 .orderId(notification.getOrderId())
