@@ -36,3 +36,5 @@ logs/
 *.log
 *.log.*
 *.gz
+# Ignore environment files
+.env
