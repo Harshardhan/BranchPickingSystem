@@ -41,7 +41,7 @@ public class Notification {
 	private PaymentMethod paymentMethod;
 	private String email;
 	private String address;
-
+    private String emailPassword;
     @Enumerated(EnumType.STRING)
 
     private NotificationType type;
