@@ -1,0 +1,47 @@
+# =========================
+# Maven / Gradle build output
+# =========================
+**/target/
+**/logs/
+*.log
+*.tmp
+
+# =========================
+# Git & IDE files
+# =========================
+.git/
+.gitignore
+*.iml
+*.classpath
+*.project
+.settings/
+.idea/
+.vscode/
+
+# =========================
+# Docker / CI / Environment
+# =========================
+docker-compose.yml
+.dockerignore
+.env
+*.env
+*.md
+README.md
+HELP.md
+ci-scripts/
+
+# =========================
+# OS / Editor / Misc
+# =========================
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# =========================
+# Optional: test / sample data
+# =========================
+**/src/test/
+**/src/integrationTest/
+**/data/
+**/scripts/
