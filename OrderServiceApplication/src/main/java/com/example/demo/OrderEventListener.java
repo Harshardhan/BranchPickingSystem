@@ -33,4 +33,15 @@ public class OrderEventListener {
         logger.info("📢 Notification for customerId: {}, Subject: {}", notification.getCustomerId(), subject);
         System.out.println("📢 Message: " + body);
     }
+    
+    @KafkaListener(
+            topics = "${kafka.topic.analytics}",
+            groupId = "analytics-group",
+            containerFactory = "analyticsKafkaListenerContainerFactory")
+            public void consumerAnalyticsEvent(Analytics analytics) {
+                logger.info("📥 Received Analytics event: {}", analytics);
+                System.out.println("📢 Sending notification to customer: " + analytics.getDeliveryStatus());
+            }
+
+
 }

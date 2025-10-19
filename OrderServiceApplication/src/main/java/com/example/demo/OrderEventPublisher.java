@@ -22,6 +22,9 @@ public class OrderEventPublisher {
     @Value("${kafka.topic.payment}")
     private String paymentTopic;
 
+    @Value("${kafka.topic.analytic}")
+    private String analyticTopic;
+    
     public OrderEventPublisher(KafkaTemplate<String, Object> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
     }
@@ -39,6 +42,11 @@ public class OrderEventPublisher {
     public void publishPaymentEvent(Payment payment) {
     	kafkaTemplate.send(paymentTopic, String.valueOf(payment.getUserId()), payment);
         logger.info("✅ Kafka Payment Event published to topic: {}", paymentTopic);
+    }
+    
+    public void publishAnalyticEvent(Analytics analytics) {
+    	kafkaTemplate.send(analyticTopic, String.valueOf(analytics.getId()), analytics);
+    	logger.info("✅ Kafka Analytic Event published to topic: {}", analyticTopic);
     }
 
 }

@@ -12,48 +12,39 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import com.example.demo.excpetions.AnalyticsNotFoundException;
+import com.example.demo.excpetions.AnalyticsProcessingException;
 import com.example.demo.excpetions.ErrorResponse;
-import com.example.demo.excpetions.InValidPaymentException;
-import com.example.demo.excpetions.PaymentNotFoundException;
-import com.example.demo.excpetions.PaymentAlreadyExistsException;
+import com.example.demo.excpetions.InvalidAnalyticsException;
 
-import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
+	
 	private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-	@ExceptionHandler(ConstraintViolationException.class)
-	public ResponseEntity<ErrorResponse> handleConstraintViolationException(ConstraintViolationException ex,
-			WebRequest request) {
-		String errors = ex.getConstraintViolations().stream()
-				.map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
-				.reduce((msg1, msg2) -> msg1 + ", " + msg2).orElse("Validation failed");
-
-		logger.warn("Constraint violation: {}", errors);
-		return buildErrorResponse("Validation Error", errors, HttpStatus.BAD_REQUEST, request);
-	}
-
-	@ExceptionHandler(PaymentNotFoundException.class)
-	public ResponseEntity<ErrorResponse> handlePaymentNotFoundException(PaymentNotFoundException ex, WebRequest request) {
-		logger.warn("Payment not found: {}", ex.getMessage());
-		return buildErrorResponse("Payment Not Found", ex.getMessage(), HttpStatus.NOT_FOUND, request);
-	}
 	
-	@ExceptionHandler(PaymentAlreadyExistsException.class)
-	public ResponseEntity<ErrorResponse> handlePaymentAlreadyExistsException(PaymentAlreadyExistsException ex,
-			WebRequest request) {
-		logger.warn("Duplicate payments  attempt: {}", ex.getMessage());
-		return buildErrorResponse("Duplicate payment", ex.getMessage(), HttpStatus.CONFLICT, request);
-	}
+    @ExceptionHandler(AnalyticsNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleAnalyticsNotFound(AnalyticsNotFoundException ex, WebRequest request) {
+		logger.warn("Analytics not found: {}", ex.getMessage());
 
-	@ExceptionHandler(InValidPaymentException.class)
-	public ResponseEntity<ErrorResponse> handleInValidPaymentException(InValidPaymentException ex, WebRequest request) {
-		logger.warn("Invalid payment data: {}", ex.getMessage());
-		return buildErrorResponse("Invalid payment", ex.getMessage(), HttpStatus.BAD_REQUEST, request);
-	}
+		return buildErrorResponse("Payment Not Found", ex.getMessage(), HttpStatus.NOT_FOUND, request);
+    }
 
+
+    @ExceptionHandler(InvalidAnalyticsException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidAnalytics(InvalidAnalyticsException ex, WebRequest request) {
+		logger.warn("Invalid Analysis data: {}", ex.getMessage());
+		return buildErrorResponse("Invalid Analysis", ex.getMessage(), HttpStatus.BAD_REQUEST, request);
+    }
+
+    @ExceptionHandler(AnalyticsProcessingException.class)
+    public ResponseEntity<ErrorResponse> handleAnalyticsProcessing(AnalyticsProcessingException ex, WebRequest request){
+    	logger.warn("Analytics processing data:{}", ex.getMessage());
+    	return buildErrorResponse("Analytics process",ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR, request);
+    }
+    
+    
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex,
 			WebRequest request) {
@@ -82,6 +73,7 @@ public class GlobalExceptionHandler {
 				request.getDescription(false).replace("uri=", ""));
 		return new ResponseEntity<>(error, status);
 	}
+
 
 
 }

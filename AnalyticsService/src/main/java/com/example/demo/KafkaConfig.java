@@ -12,12 +12,7 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
-import org.springframework.util.backoff.FixedBackOff;
-
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Configuration
 @EnableKafka
@@ -28,7 +23,7 @@ public class KafkaConfig {
 
     @Value("${spring.kafka.consumer.group-id}")
     private String groupId;
-
+    
     // For Order payloads
     @Bean
     public ConsumerFactory<String, Order> orderConsumerFactory() {
@@ -52,13 +47,12 @@ public class KafkaConfig {
         return factory;
     }
 
-    // For NotificationRequest payloads
-    @Bean
-    public ConsumerFactory<String, Payment> paymentConsumerFactory() {
-        ObjectMapper mapper = new ObjectMapper();
-        JavaType type = mapper.constructType(Payment.class);
 
-        JsonDeserializer<Payment> deserializer = new JsonDeserializer<>(type, mapper);
+    
+    //For Analytics Report
+    @Bean
+    public ConsumerFactory<String, Analytics> analyticsConsumerFactory(){
+        JsonDeserializer<Analytics> deserializer = new JsonDeserializer<>(Analytics.class);
         deserializer.addTrustedPackages("*");
         deserializer.setRemoveTypeHeaders(false);
         deserializer.setUseTypeMapperForKey(false);
@@ -68,15 +62,15 @@ public class KafkaConfig {
         props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 
-        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), deserializer);
+        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), deserializer);    	
     }
-
+    
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, Payment> paymentKafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, Payment> factory =
-                new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(paymentConsumerFactory());
-        factory.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(1000L, 3)));
-        return factory;
+    public ConcurrentKafkaListenerContainerFactory<String, Analytics> AnalyticsKafkaListenerContainerFactory(){
+    	ConcurrentKafkaListenerContainerFactory<String, Analytics> factory = new ConcurrentKafkaListenerContainerFactory<>();
+    	factory.setConsumerFactory(analyticsConsumerFactory());
+		return factory;
     }
+    
+    
 }

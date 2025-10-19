@@ -313,6 +313,46 @@ services:
       timeout: 5s
       retries: 5
 
+  analytics-service:
+    build:
+      context: .
+      dockerfile: AnalyticsService/Dockerfile
+    container_name: analytics-service
+    expose:
+      - "8087"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      mysql-analytics:
+        condition: service_started
+      logstash:
+        condition: service_started
+      zipkin:
+        condition: service_started
+      kafka:
+        condition: service_started
+    volumes:
+      - ${USERPROFILE}/.m2:/root/.m2
+      - ./logs/AnalyticsService:/app/logs
+    env_file:
+      - .env
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EMAIL_USERNAME: ${EMAIL_USERNAME}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8087/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  
+
   # ======================= DATABASES ========================
   mysql-order:
     image: mysql:8
@@ -385,6 +425,19 @@ services:
     networks:
       - branch-picking-network
     restart: unless-stopped
+
+  mysql-analytics:
+    image: mysql:8
+    container_name: mysql-analytics
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${PAYMENT_DB}
+    volumes:
+      - mysql-analytics-data:/var/lib/mysql
+    networks:
+      - branch-picking-network
+    restart: unless-stopped
+
 
   # ======================= LOGGING & MONITORING ========================
   elasticsearch:
@@ -510,6 +563,7 @@ volumes:
   mysql-consolidation-data:
   mysql-notification-data:
   mysql-payment-data:
+  mysql-analytics-data:
   redis-data:
 
 # ======================= NETWORKS ========================
