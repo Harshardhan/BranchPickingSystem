@@ -15,7 +15,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import com.example.demo.security.JwtAuthEntryPoint;
 import com.example.demo.security.JwtAuthenticationFilter;
 
-
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -35,12 +34,9 @@ public class SecurityConfig {
             .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint))
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Public endpoints
                 .requestMatchers("/api/auth/**", "/api/users/register").permitAll()
                 .requestMatchers("/actuator/health").permitAll() // public health check
-                // Secure actuator endpoints
-                .requestMatchers("/actuator/**").hasRole("ADMIN")
-                // All other requests require authentication
+                .requestMatchers("/actuator/**").hasRole("ADMIN") // secure other actuator endpoints
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
