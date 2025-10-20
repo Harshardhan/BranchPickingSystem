@@ -22,8 +22,8 @@ public class OrderEventPublisher {
     @Value("${kafka.topic.payment}")
     private String paymentTopic;
 
-    @Value("${kafka.topic.analytic}")
-    private String analyticTopic;
+    @Value("${kafka.topic.analytics}")
+    private String analyticsTopic;
     
     public OrderEventPublisher(KafkaTemplate<String, Object> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
