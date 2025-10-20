@@ -45,8 +45,8 @@ public class OrderEventPublisher {
     }
     
     public void publishAnalyticEvent(Analytics analytics) {
-    	kafkaTemplate.send(analyticTopic, String.valueOf(analytics.getId()), analytics);
-    	logger.info("✅ Kafka Analytic Event published to topic: {}", analyticTopic);
+    	kafkaTemplate.send(analyticsTopic, String.valueOf(analytics.getId()), analytics);
+    	logger.info("✅ Kafka Analytic Event published to topic: {}", analyticsTopic);
     }
 
 }
