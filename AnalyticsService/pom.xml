@@ -30,7 +30,7 @@
 	</scm>
 	<properties>
 		<java.version>17</java.version>
-		<spring-boot.version>3.2.3</spring-boot.version> <!-- ✅ updated -->
+		<spring-boot.version>3.2.12</spring-boot.version> <!-- ✅ updated -->
 		<spring-cloud.version>2023.0.1</spring-cloud.version>
 	</properties>
 	<dependencies>
