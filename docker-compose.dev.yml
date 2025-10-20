@@ -431,7 +431,7 @@ services:
     container_name: mysql-analytics
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${PAYMENT_DB}
+      MYSQL_DATABASE: ${ANALYTICS_DB}
     volumes:
       - mysql-analytics-data:/var/lib/mysql
     networks:

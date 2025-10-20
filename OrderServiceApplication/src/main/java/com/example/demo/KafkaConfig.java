@@ -82,4 +82,10 @@ public class KafkaConfig {
     public ConcurrentKafkaListenerContainerFactory<String, Order> orderEventKafkaListenerContainerFactory() {
         return listenerFactory(Order.class, "order-event-group");
     }
+    
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, Analytics> analyticsEventKafkaListenerContainerFactory(){
+		return listenerFactory(Analytics.class, "analytics-group");
+    	
+    }
 }
