@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 public class OrderEventPublisher {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderEventPublisher.class);
-
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Value("${kafka.topic.order}")
@@ -24,29 +23,28 @@ public class OrderEventPublisher {
 
     @Value("${kafka.topic.analytics}")
     private String analyticsTopic;
-    
+
     public OrderEventPublisher(KafkaTemplate<String, Object> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    public void publishOrderPlacedEvent(Order order) {
+    public void publishOrder(Order order) {
         kafkaTemplate.send(orderTopic, order.getCustomerId().toString(), order);
-        logger.info("✅ Kafka Order Event published to topic: {}", orderTopic);
+        logger.info("Order event published to topic '{}': {}", orderTopic, order);
     }
 
-    public void publishNotificationEvent(NotificationRequest notification) {
-    	kafkaTemplate.send(notificationTopic, String.valueOf(notification.getCustomerId()), notification);
-        logger.info("✅ Kafka Notification Event published to topic: {}", notificationTopic);
-    }
-    
-    public void publishPaymentEvent(Payment payment) {
-    	kafkaTemplate.send(paymentTopic, String.valueOf(payment.getUserId()), payment);
-        logger.info("✅ Kafka Payment Event published to topic: {}", paymentTopic);
-    }
-    
-    public void publishAnalyticEvent(Analytics analytics) {
-    	kafkaTemplate.send(analyticsTopic, String.valueOf(analytics.getId()), analytics);
-    	logger.info("✅ Kafka Analytic Event published to topic: {}", analyticsTopic);
+    public void publishNotification(NotificationRequest notification) {
+        kafkaTemplate.send(notificationTopic, String.valueOf(notification.getCustomerId()), notification);
+        logger.info("Notification event published to topic '{}': {}", notificationTopic, notification);
     }
 
+    public void publishPayment(Payment payment) {
+        kafkaTemplate.send(paymentTopic, String.valueOf(payment.getUserId()), payment);
+        logger.info("Payment event published to topic '{}': {}", paymentTopic, payment);
+    }
+
+    public void publishAnalytics(Analytics analytics) {
+        kafkaTemplate.send(analyticsTopic, String.valueOf(analytics.getId()), analytics);
+        logger.info("Analytics event published to topic '{}': {}", analyticsTopic, analytics);
+    }
 }

@@ -2,7 +2,6 @@ package com.example.demo;
 
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,13 +20,9 @@ public class KafkaConfig {
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
-    @Value("${spring.kafka.consumer.group-id}")
-    private String groupId;
-    
-    // For Order payloads
-    @Bean
-    public ConsumerFactory<String, Order> orderConsumerFactory() {
-        JsonDeserializer<Order> deserializer = new JsonDeserializer<>(Order.class);
+    // ---------- Generic Consumer Factory ----------
+    private <T> ConsumerFactory<String, T> consumerFactory(Class<T> clazz, String groupId) {
+        JsonDeserializer<T> deserializer = new JsonDeserializer<>(clazz);
         deserializer.addTrustedPackages("*");
         deserializer.setRemoveTypeHeaders(false);
         deserializer.setUseTypeMapperForKey(false);
@@ -40,37 +35,20 @@ public class KafkaConfig {
         return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), deserializer);
     }
 
-    @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, Order> orderKafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, Order> factory = new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(orderConsumerFactory());
+    private <T> ConcurrentKafkaListenerContainerFactory<String, T> listenerFactory(Class<T> clazz, String groupId) {
+        ConcurrentKafkaListenerContainerFactory<String, T> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(consumerFactory(clazz, groupId));
         return factory;
     }
 
-
-    
-    //For Analytics Report
+    // ---------- Specific Factories ----------
     @Bean
-    public ConsumerFactory<String, Analytics> analyticsConsumerFactory(){
-        JsonDeserializer<Analytics> deserializer = new JsonDeserializer<>(Analytics.class);
-        deserializer.addTrustedPackages("*");
-        deserializer.setRemoveTypeHeaders(false);
-        deserializer.setUseTypeMapperForKey(false);
-
-        Map<String, Object> props = new HashMap<>();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-
-        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), deserializer);    	
+    public ConcurrentKafkaListenerContainerFactory<String, Order> orderKafkaListenerContainerFactory() {
+        return listenerFactory(Order.class, "order-group");
     }
-    
+
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, Analytics> AnalyticsKafkaListenerContainerFactory(){
-    	ConcurrentKafkaListenerContainerFactory<String, Analytics> factory = new ConcurrentKafkaListenerContainerFactory<>();
-    	factory.setConsumerFactory(analyticsConsumerFactory());
-		return factory;
+    public ConcurrentKafkaListenerContainerFactory<String, Analytics> analyticsKafkaListenerContainerFactory() {
+        return listenerFactory(Analytics.class, "analytics-group");
     }
-    
-    
 }

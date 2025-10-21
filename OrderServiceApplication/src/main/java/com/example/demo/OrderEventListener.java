@@ -10,38 +10,33 @@ public class OrderEventListener {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderEventListener.class);
 
-    // ✅ Use the correct containerFactory bean name
     @KafkaListener(
         topics = "${kafka.topic.order}",
         groupId = "order-group",
         containerFactory = "orderKafkaListenerContainerFactory"
     )
-    public void consumeOrderEvent(Order order) {
-        logger.info("📥 Received Order event: {}", order);
-        System.out.println("📢 Sending notification to customer: " + order.getOrderStatus());
+    public void consumeOrder(Order order) {
+        logger.info("Received Order event: {}", order);
+        System.out.println("Processing order: " + order.getOrderStatus());
     }
 
     @KafkaListener(
         topics = "${kafka.topic.notification}",
-        groupId = "notification-group",   // ✅ should be notification group, not order-group
+        groupId = "notification-group",
         containerFactory = "notificationKafkaListenerContainerFactory"
     )
-    public void listenNotification(NotificationRequest notification) {
-        String subject = "Order Confirmation: " + notification.getOrderReference();
-        String body = "Hi, your order for " + notification.getProductName() + " has been placed successfully.";
-
-        logger.info("📢 Notification for customerId: {}, Subject: {}", notification.getCustomerId(), subject);
-        System.out.println("📢 Message: " + body);
+    public void consumeNotification(NotificationRequest notification) {
+        logger.info("Received Notification event: {}", notification);
+        System.out.println("Processing notification for customer: " + notification.getCustomerId());
     }
-    
+
     @KafkaListener(
-            topics = "${kafka.topic.analytics}",
-            groupId = "analytics-group",
-            containerFactory = "analyticsKafkaListenerContainerFactory")
-            public void consumerAnalyticsEvent(Analytics analytics) {
-                logger.info("📥 Received Analytics event: {}", analytics);
-                System.out.println("📢 Sending notification to customer: " + analytics.getDeliveryStatus());
-            }
-
-
+        topics = "${kafka.topic.analytics}",
+        groupId = "analytics-group",
+        containerFactory = "analyticsKafkaListenerContainerFactory"
+    )
+    public void consumeAnalytics(Analytics analytics) {
+        logger.info("Received Analytics event: {}", analytics);
+        System.out.println("Processing analytics delivery status: " + analytics.getDeliveryStatus());
+    }
 }

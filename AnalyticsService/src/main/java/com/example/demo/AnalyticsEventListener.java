@@ -8,29 +8,25 @@ import org.springframework.stereotype.Component;
 @Component
 public class AnalyticsEventListener {
 
-	private static final Logger logger = LoggerFactory.getLogger(AnalyticsEventListener.class);
-	
-    // ✅ Use the correct containerFactory bean name
+    private static final Logger logger = LoggerFactory.getLogger(AnalyticsEventListener.class);
+
     @KafkaListener(
         topics = "${kafka.topic.analytics}",
         groupId = "analytics-group",
-        containerFactory = "analyticsKafkaListenerContainerFactory")
-        public void consumerAnalyticsEvent(Analytics analytics) {
-            logger.info("📥 Received Analytics event: {}", analytics);
-            System.out.println("📢 Sending notification to customer: " + analytics.getDeliveryStatus());
-        }
+        containerFactory = "analyticsKafkaListenerContainerFactory"
+    )
+    public void consumeAnalytics(Analytics analytics) {
+        logger.info("Received Analytics event: {}", analytics);
+        System.out.println("Processing analytics delivery status: " + analytics.getDeliveryStatus());
+    }
 
-    // ✅ Use the correct containerFactory bean name
     @KafkaListener(
         topics = "${kafka.topic.order}",
         groupId = "order-group",
         containerFactory = "orderKafkaListenerContainerFactory"
     )
-    public void consumeOrderEvent(Order order) {
-        logger.info("📥 Received Order event: {}", order);
-        System.out.println("📢 Sending notification to customer: " + order.getOrderStatus());
+    public void consumeOrder(Order order) {
+        logger.info("Received Order event: {}", order);
+        System.out.println("Processing order status: " + order.getOrderStatus());
     }
-
-
-
 }

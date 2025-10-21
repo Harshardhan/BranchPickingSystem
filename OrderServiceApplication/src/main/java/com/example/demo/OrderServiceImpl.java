@@ -98,7 +98,7 @@ public class OrderServiceImpl implements OrderService {
 
         // 5. Publish Kafka event to Consolidation Service
         try {
-            orderEventPublisher.publishOrderPlacedEvent(savedOrder);
+            orderEventPublisher.publishOrder(savedOrder);
             logger.info("📤 Kafka event published to Consolidation topic for order: {}", savedOrder.getOrderReference());
         } catch (Exception e) {
             logger.error("❌ Failed to publish Consolidation event: {}", e.getMessage());
@@ -121,7 +121,7 @@ public class OrderServiceImpl implements OrderService {
             notification.setOrderType(savedOrder.getOrderType());
             notification.setType(NotificationType.EMAIL);
 
-            orderEventPublisher.publishNotificationEvent(notification);
+            orderEventPublisher.publishNotification(notification);
             logger.info("📤 Kafka event published to Notification topic for order: {}", savedOrder.getOrderReference());
         } catch (Exception e) {
             logger.warn("❌ Failed to publish notification event: {}", e.getMessage());
