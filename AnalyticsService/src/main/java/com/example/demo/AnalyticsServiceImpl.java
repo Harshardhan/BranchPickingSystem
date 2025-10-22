@@ -19,154 +19,158 @@ import jakarta.transaction.Transactional;
 
 @Service
 @Transactional
-public class AnalyticsServiceImpl implements AnalyticsService{
+public class AnalyticsServiceImpl implements AnalyticsService {
 
     private static final Logger logger = LoggerFactory.getLogger(AnalyticsServiceImpl.class);
 
-	
-	private  final AnalyticsRepository analyticsRepository;
-	
-	public AnalyticsServiceImpl(AnalyticsRepository analyticsRepository) {
-		this.analyticsRepository = analyticsRepository;
-	}
+    private final AnalyticsRepository analyticsRepository;
 
-	@Override
-	public Analytics saveAnalytics(Analytics analytics) throws AnalyticsNotFoundException, InvalidAnalyticsException {
+    public AnalyticsServiceImpl(AnalyticsRepository analyticsRepository) {
+        this.analyticsRepository = analyticsRepository;
+    }
 
-		if(analytics == null || analytics.getOrderId() ==null) {
-			throw new InvalidAnalyticsException("Invalid Details.");
-		}
-		
-	     if (!analyticsRepository.existsById(analytics.getOrderId())) {
-	       throw new AnalyticsNotFoundException("Order ID not found: " + analytics.getOrderId());
-	    }
+    @Override
+    public Analytics saveAnalytics(Analytics analytics)
+            throws AnalyticsNotFoundException, InvalidAnalyticsException {
 
-	     // ✅ Set createdAt timestamp if null
-	     if (analytics.getCreatedAt() == null) {
-	         analytics.setCreatedAt(LocalDateTime.now());
-	     }
+        if (analytics == null || analytics.getOrderId() == null) {
+            throw new InvalidAnalyticsException("Invalid Details.");
+        }
 
-		Analytics savedReport = analyticsRepository.save(analytics);
-		logger.info("Generating report on order fullfilment data saved successfully: {} ",savedReport.getId());
-		return savedReport;
-	}
+        if (!analyticsRepository.existsById(analytics.getOrderId())) {
+            throw new AnalyticsNotFoundException("Order ID not found: " + analytics.getOrderId());
+        }
 
-	@Override
-	public Analytics updateDeliveryStatus(Long orderId, DeliveryStatus deliveryStatus, LocalDateTime deliveredAt)
-	        throws InvalidAnalyticsException, AnalyticsNotFoundException {
+        if (analytics.getCreatedAt() == null) {
+            analytics.setCreatedAt(LocalDateTime.now());
+        }
 
-	    Analytics existingReport = analyticsRepository.findByOrderId(orderId)
-	            .orElseThrow(() -> new AnalyticsNotFoundException("Analytics not found with Order ID: " + orderId));
+        Analytics savedReport = analyticsRepository.save(analytics);
+        logger.info("Analytics saved successfully: {}", savedReport.getId());
+        return savedReport;
+    }
 
-	    if (deliveryStatus == null) {
-	        throw new InvalidAnalyticsException("Delivery status cannot be null");
-	    }
+    @Override
+    public Analytics updateDeliveryStatus(Long orderId, DeliveryStatus deliveryStatus, LocalDateTime deliveredAt)
+            throws InvalidAnalyticsException, AnalyticsNotFoundException {
 
-	    // Optional: Prevent downgrading of status
-	    if (existingReport.getDeliveryStatus() == DeliveryStatus.DELIVERED &&
-	        deliveryStatus != DeliveryStatus.DELIVERED) {
-	        throw new InvalidAnalyticsException("Cannot change status from DELIVERED to " + deliveryStatus);
-	    }
+        Analytics existingReport = analyticsRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new AnalyticsNotFoundException("Analytics not found with Order ID: " + orderId));
 
-	    existingReport.setDeliveryStatus(deliveryStatus);
-	    existingReport.setOrderDeliveredAt(deliveredAt != null ? deliveredAt : LocalDateTime.now());
+        if (deliveryStatus == null) {
+            throw new InvalidAnalyticsException("Delivery status cannot be null");
+        }
 
-	    Analytics updatedReport = analyticsRepository.save(existingReport);
+        if (existingReport.getDeliveryStatus() == DeliveryStatus.DELIVERED
+                && deliveryStatus != DeliveryStatus.DELIVERED) {
+            throw new InvalidAnalyticsException("Cannot change status from DELIVERED to " + deliveryStatus);
+        }
 
-	    logger.info("Updated delivery status for Order ID {}: {}", orderId, deliveryStatus);
+        existingReport.setDeliveryStatus(deliveryStatus);
+        existingReport.setOrderDeliveredAt(deliveredAt != null ? deliveredAt : LocalDateTime.now());
 
-	    return updatedReport;
-	}
-	@Override
-	public Long getAverageDeliveryTime() throws AnalyticsNotFoundException {
-	    Long avg = analyticsRepository.getAverageDeliveryTime();
-	    if (avg == null) {
-	        throw new AnalyticsNotFoundException("No delivered orders found to calculate average time!");
-	    }
-	    logger.info("Successfully find the details of average deliverytime per order:{}");
-	    return avg;
-	}
+        Analytics updatedReport = analyticsRepository.save(existingReport);
+        logger.info("Updated delivery status for Order ID {}: {}", orderId, deliveryStatus);
+        return updatedReport;
+    }
 
-	@Override
-	public Map<Long, Long> getAverageDeliveryTimeByProduct() throws AnalyticsProcessingException {
+    @Override
+    public Long getAverageDeliveryTime() throws AnalyticsNotFoundException {
+        Long avg = analyticsRepository.getAverageDeliveryTime();
+        if (avg == null) {
+            throw new AnalyticsNotFoundException("No delivered orders found to calculate average time!");
+        }
+        logger.info("Average delivery time retrieved: {}", avg);
+        return avg;
+    }
 
-		try {
-			List<Analytics> deliveredOrders = analyticsRepository.findAll().stream().
-					filter(a -> "DELIVERED".equals(a.getDeliveryStatus())).collect(Collectors.toList());
-			if(deliveredOrders.isEmpty()) {
-	            throw new AnalyticsProcessingException("No delivered orders found to calculate average per product.", null);
-			}
-			
-			Map<Long, Long> averageProduct = deliveredOrders.stream()
-					.collect(Collectors.groupingBy(Analytics::getProductId, Collectors.collectingAndThen(
-							Collectors.averagingLong(a->Duration.between(a.getOrderPlacedAt(), 
-									a.getOrderDeliveredAt()).toMinutes()), Double::longValue))
-			
-		);
-		return averageProduct;
-	}catch(Exception e) {
-        throw new AnalyticsProcessingException("Failed to calculate average delivery time by product: " + e.getMessage(), e);
-	}
-	}
+    @Override
+    public Map<Long, Long> getAverageDeliveryTimeByProduct() throws AnalyticsProcessingException {
+        try {
+            List<Analytics> deliveredOrders = analyticsRepository.findAll().stream()
+                    .filter(a -> a.getDeliveryStatus() == DeliveryStatus.DELIVERED)
+                    .collect(Collectors.toList());
 
-	@Override
-	public List<Analytics> getDelayedDeliveries(Long thresholdMinutes) throws AnalyticsProcessingException {
-	    try {
-	        return analyticsRepository.findAll().stream()
-	                .filter(a -> "DELIVERED".equals(a.getDeliveryStatus()))
-	                .filter(a -> Duration.between(a.getOrderPlacedAt(), a.getOrderDeliveredAt()).toMinutes() > thresholdMinutes)
-	                .collect(Collectors.toList());
-	    } catch (Exception e) {
-	        throw new AnalyticsProcessingException("Failed to retrieve delayed deliveries: " + e.getMessage(), e);
-	    }
-	}
+            if (deliveredOrders.isEmpty()) {
+                throw new AnalyticsProcessingException("No delivered orders found to calculate average per product.", null);
+            }
 
-	@Override
-	public List<Analytics> getDeliveredOrdersBetween(LocalDateTime start, LocalDateTime end) 
-	        throws AnalyticsNotFoundException {
+            Map<Long, Long> averageProduct = deliveredOrders.stream()
+                    .collect(Collectors.groupingBy(
+                            Analytics::getProductId,
+                            Collectors.collectingAndThen(
+                                    Collectors.averagingLong(a -> Duration.between(
+                                            a.getOrderPlacedAt(), a.getOrderDeliveredAt()).toMinutes()),
+                                    Double::longValue)));
 
-	    List<Analytics> deliveredOrders = analyticsRepository.findAll().stream()
-	            .filter(a -> "DELIVERED".equals(a.getDeliveryStatus()))
-	            .filter(a -> !a.getOrderDeliveredAt().isBefore(start) && !a.getOrderDeliveredAt().isAfter(end))
-	            .collect(Collectors.toList());
+            return averageProduct;
+        } catch (Exception e) {
+            throw new AnalyticsProcessingException(
+                    "Failed to calculate average delivery time by product: " + e.getMessage(), e);
+        }
+    }
 
-	    if (deliveredOrders.isEmpty()) {
-	        throw new AnalyticsNotFoundException("No delivered orders found in the given date range.");
-	    }
+    @Override
+    public List<Analytics> getDelayedDeliveries(Long thresholdMinutes) throws AnalyticsProcessingException {
+        try {
+            return analyticsRepository.findAll().stream()
+                    .filter(a -> a.getDeliveryStatus() == DeliveryStatus.DELIVERED)
+                    .filter(a -> Duration.between(a.getOrderPlacedAt(), a.getOrderDeliveredAt()).toMinutes() > thresholdMinutes)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            throw new AnalyticsProcessingException("Failed to retrieve delayed deliveries: " + e.getMessage(), e);
+        }
+    }
 
-	    return deliveredOrders;
-	}
+    @Override
+    public List<Analytics> getDeliveredOrdersBetween(LocalDateTime start, LocalDateTime end)
+            throws AnalyticsNotFoundException {
 
-	@Override
-	public Double getDeliverySuccessRate() throws AnalyticsProcessingException {
-	    try {
-	        List<Analytics> allOrders = analyticsRepository.findAll();
-	        if (allOrders.isEmpty()) return 0.0;
+        List<Analytics> deliveredOrders = analyticsRepository.findAll().stream()
+                .filter(a -> a.getDeliveryStatus() == DeliveryStatus.DELIVERED)
+                .filter(a -> !a.getOrderDeliveredAt().isBefore(start)
+                        && !a.getOrderDeliveredAt().isAfter(end))
+                .collect(Collectors.toList());
 
-	        long deliveredCount = allOrders.stream()
-	                .filter(a -> "DELIVERED".equals(a.getDeliveryStatus()))
-	                .count();
+        if (deliveredOrders.isEmpty()) {
+            throw new AnalyticsNotFoundException("No delivered orders found in the given date range.");
+        }
 
-	        return (deliveredCount * 100.0) / allOrders.size();
-	    } catch (Exception e) {
-	        throw new AnalyticsProcessingException("Failed to calculate delivery success rate: " + e.getMessage(), e);
-	    }
-	}
-	@Override
-	public Map<String, Object> getDeliverySummaryReport() throws AnalyticsNotFoundException, AnalyticsProcessingException {
-	    Map<String, Object> summary = new HashMap<>();
+        return deliveredOrders;
+    }
 
-	    List<Analytics> allOrders = analyticsRepository.findAll();
-	    if (allOrders.isEmpty()) {
-	        throw new AnalyticsNotFoundException("No analytics data found to generate summary report.");
-	    }
+    @Override
+    public Double getDeliverySuccessRate() throws AnalyticsProcessingException {
+        try {
+            List<Analytics> allOrders = analyticsRepository.findAll();
+            if (allOrders.isEmpty()) return 0.0;
 
-	    summary.put("totalOrders", allOrders.size());
-	    summary.put("averageDeliveryTime", getAverageDeliveryTime());
-	    summary.put("deliverySuccessRate", getDeliverySuccessRate());
-	    summary.put("delayedDeliveries", getDelayedDeliveries(60L)); // Example threshold: 60 minutes
-	    summary.put("averageDeliveryTimeByProduct", getAverageDeliveryTimeByProduct());
+            long deliveredCount = allOrders.stream()
+                    .filter(a -> a.getDeliveryStatus() == DeliveryStatus.DELIVERED)
+                    .count();
 
-	    return summary;
-	}
+            return (deliveredCount * 100.0) / allOrders.size();
+        } catch (Exception e) {
+            throw new AnalyticsProcessingException("Failed to calculate delivery success rate: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public Map<String, Object> getDeliverySummaryReport()
+            throws AnalyticsNotFoundException, AnalyticsProcessingException {
+        Map<String, Object> summary = new HashMap<>();
+
+        List<Analytics> allOrders = analyticsRepository.findAll();
+        if (allOrders.isEmpty()) {
+            throw new AnalyticsNotFoundException("No analytics data found to generate summary report.");
+        }
+
+        summary.put("totalOrders", allOrders.size());
+        summary.put("averageDeliveryTime", getAverageDeliveryTime());
+        summary.put("deliverySuccessRate", getDeliverySuccessRate());
+        summary.put("delayedDeliveries", getDelayedDeliveries(60L));
+        summary.put("averageDeliveryTimeByProduct", getAverageDeliveryTimeByProduct());
+
+        return summary;
+    }
 }
