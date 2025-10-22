@@ -1,13 +1,9 @@
 package com.example.demo.security;
 
 import jakarta.servlet.FilterChain;
-
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -19,7 +15,6 @@ import java.io.IOException;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-	private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
     private final JwtTokenProvider jwtTokenProvider;
 
     public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
@@ -32,22 +27,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-    	String path = request.getRequestURI();
-    	logger.info("Incoming path = " + path);
-    	logger.info("JWT Filter checking path: {}", path);
+        String path = request.getRequestURI();
+        System.out.println("Incoming path = " + path); // Debug
 
-
-    	// Normalize path to remove double slashes
-    	path = path.replaceAll("//", "/");
-
-    	// Skip JWT for public endpoints
-    	if (path.matches(".*/api/auth/.*")
-    	        || path.matches(".*/api/users/register/?$")
-    	        || path.matches(".*/actuator/.*")
-    	        || path.equals("/error")) {
-    	    filterChain.doFilter(request, response);
-    	    return;
-    	}
+     // Skip JWT check for public endpoints
+     // Skip JWT check for public endpoints
+        if (path.startsWith("/api/auth")
+                || path.startsWith("/api/users/register")
+                ) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         // ✅ Check Authorization header
         String authHeader = request.getHeader("Authorization");
@@ -70,8 +60,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
-
     }
-    
-
 }

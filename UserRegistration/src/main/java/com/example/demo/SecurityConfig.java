@@ -38,7 +38,6 @@ public class SecurityConfig {
             	    .requestMatchers("/api/auth/**").permitAll()
             	    .requestMatchers("/api/users/register").permitAll()
             	    .requestMatchers("/actuator/**").permitAll()   // ✅ allow actuator health/info
-                    .requestMatchers("/error").permitAll()   // ✅ add this line
             	    .requestMatchers("/login.html", "/dashboard.html", "/css/**", "/js/**").permitAll()
             	    .anyRequest().authenticated()
             	)
