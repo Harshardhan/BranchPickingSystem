@@ -20,21 +20,22 @@ public class AuthController {
     private final JwtTokenProvider jwtTokenProvider;
 
     public AuthController(AuthenticationManager authenticationManager,
-                          JwtTokenProvider jwtTokenProvider,
-                          CustomUserDetailsService userDetailsService) {
+                          JwtTokenProvider jwtTokenProvider) {
         this.authenticationManager = authenticationManager;
         this.jwtTokenProvider = jwtTokenProvider;
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
-        Authentication auth = authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-        );
-
-        UserDetails userDetails = (UserDetails) auth.getPrincipal();
-        String token = jwtTokenProvider.generateToken(userDetails);
-
-        return ResponseEntity.ok(Map.of("token", token));
+        try {
+            Authentication auth = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+            );
+            UserDetails userDetails = (UserDetails) auth.getPrincipal();
+            String token = jwtTokenProvider.generateToken(userDetails);
+            return ResponseEntity.ok(Map.of("token", token));
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body(Map.of("error", "Invalid username or password"));
+        }
     }
 }

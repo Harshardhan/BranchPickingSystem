@@ -29,27 +29,41 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            // Disable CSRF because we use JWT
             .csrf(csrf -> csrf.disable())
+
+            // Handle unauthorized access
             .exceptionHandling(e -> e.authenticationEntryPoint(authEntryPoint))
-            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // stateless
+
+            // Make the session stateless (JWT only)
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+            // Authorization rules
             .authorizeHttpRequests(auth -> auth
-            	    .requestMatchers("/api/auth/**").permitAll()
-            	    .requestMatchers("/api/users/register").permitAll()
-            	    .requestMatchers("/actuator/**").permitAll()   // ✅ allow actuator health/info
-            	    .requestMatchers("/login.html", "/dashboard.html", "/css/**", "/js/**").permitAll()
-            	    .anyRequest().authenticated()
-            	)
+                // Public endpoints (no token needed)
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()
+                .requestMatchers("/actuator/**").permitAll()
+                .requestMatchers("/login.html", "/dashboard.html", "/css/**", "/js/**").permitAll()
+                // Everything else must be authenticated
+                .anyRequest().authenticated()
+            )
+
+            // Add JWT filter before the username/password filter
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
+    // Password encoder (used in UserService for storing passwords securely)
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    // Expose AuthenticationManager so it can be used in AuthController
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
