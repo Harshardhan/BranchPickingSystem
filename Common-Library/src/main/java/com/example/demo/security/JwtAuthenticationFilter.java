@@ -20,7 +20,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
         this.jwtTokenProvider = jwtTokenProvider;
     }
-    
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
@@ -30,53 +30,42 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         System.out.println("[JWT-FILTER] Incoming path = " + path);
 
-        // Skip public endpoints
-        if (path.matches(".*/api/auth/.*") ||
-        	    path.matches(".*/api/users/register.*") ||
-        	    path.matches(".*/actuator/.*")) {
-        	    System.out.println("[JWT-FILTER] Public endpoint detected, skipping JWT validation");
-        	    filterChain.doFilter(request, response);
-        	    return;
-        	}
+        // Adjust this to match the gateway forwarding path
+     // Skip public endpoints
+        if (path.startsWith("/api/auth/") || path.startsWith("/api/users/") || path.startsWith("/actuator/")) {
+            System.out.println("[JWT-FILTER] Public endpoint detected, skipping JWT validation");
+            filterChain.doFilter(request, response);
+
+            return;
+        }
+
         if (SecurityContextHolder.getContext().getAuthentication() != null) {
-            System.out.println("[JWT-FILTER] Already authenticated, skipping");
             filterChain.doFilter(request, response);
             return;
         }
 
         String authHeader = request.getHeader("Authorization");
-        if (authHeader == null) {
-            System.out.println("[JWT-FILTER] No Authorization header found");
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        if (!authHeader.startsWith("Bearer ")) {
-            System.out.println("[JWT-FILTER] Authorization header invalid format");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
         String token = authHeader.substring(7);
-        System.out.println("[JWT-FILTER] Extracted token = " + token.substring(0, Math.min(20, token.length())) + "...");
 
         try {
             var claims = jwtTokenProvider.parse(token).getBody();
             var username = claims.getSubject();
-            System.out.println("[JWT-FILTER] Token valid for user: " + username);
-
             var authorities = jwtTokenProvider.getAuthoritiesFromClaims(claims);
-            var authentication = new UsernamePasswordAuthenticationToken(
-                    username, null, authorities);
+
+            var authentication = new UsernamePasswordAuthenticationToken(username, null, authorities);
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            System.out.println("[JWT-FILTER] SecurityContext updated successfully");
+
         } catch (Exception e) {
             System.out.println("[JWT-FILTER] JWT validation failed: " + e.getMessage());
         }
 
         filterChain.doFilter(request, response);
     }
-
 
 }

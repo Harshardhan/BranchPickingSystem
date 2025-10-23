@@ -36,17 +36,17 @@ public class SecurityConfig {
             .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthEntryPoint))
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // ✅ Public endpoints (no token needed)
+                // PUBLIC endpoints (no JWT needed)
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
-                // Secure actuator admin endpoints
+                // ADMIN-only actuator endpoints
                 .requestMatchers("/actuator/**").hasRole("ADMIN")
-                // All other requests need authentication
+                // EVERYTHING else needs authentication
                 .anyRequest().authenticated()
             )
-            // ✅ Apply JWT filter before UsernamePasswordAuthenticationFilter
+            // Apply JWT filter before username/password filter
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
