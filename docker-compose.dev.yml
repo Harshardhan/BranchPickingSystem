@@ -96,7 +96,7 @@ services:
       dockerfile: OrderServiceApplication/Dockerfile
     container_name: order-service
     expose:
-      - "8081"
+      - "8081:8081"
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -130,7 +130,7 @@ services:
       dockerfile: UserRegistration/Dockerfile
     container_name: user-registration
     expose:
-      - "8083"
+      - "8083:8083"
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -171,7 +171,7 @@ services:
       dockerfile: PaymentApplication/Dockerfile
     container_name: payment-service
     expose:
-      - "8086"
+      - "8086:8086"
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -209,7 +209,7 @@ services:
       dockerfile: ProductServiceApplication/Dockerfile
     container_name: product-service
     expose:
-      - "8082"
+      - "8082:8082"
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -247,7 +247,7 @@ services:
       dockerfile: ConsolidationService/Dockerfile
     container_name: consolidation-service
     expose:
-      - "8084"
+      - "8084:8084"
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -281,7 +281,7 @@ services:
       dockerfile: NotificationService/Dockerfile
     container_name: notification-service
     expose:
-      - "8085"
+      - "8085:8085"
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -319,7 +319,7 @@ services:
       dockerfile: AnalyticsService/Dockerfile
     container_name: analytics-service
     expose:
-      - "8087"
+      - "8087:8087"
     depends_on:
       eureka-server:
         condition: service_healthy
