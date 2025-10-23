@@ -32,13 +32,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // Adjust this to match the gateway forwarding path
      // Skip public endpoints
-        if (path.startsWith("/api/auth/") || path.startsWith("/api/users/") || path.startsWith("/actuator/")) {
-            System.out.println("[JWT-FILTER] Public endpoint detected, skipping JWT validation");
-            filterChain.doFilter(request, response);
-
-            return;
-        }
-
+        if (path.startsWith("/users/register") ||
+        	    path.startsWith("/auth/") ||
+        	    path.startsWith("/actuator/")) {
+        	    System.out.println("[JWT-FILTER] Public endpoint detected, skipping JWT validation");
+        	    filterChain.doFilter(request, response);
+        	    return;
+        	}
         if (SecurityContextHolder.getContext().getAuthentication() != null) {
             filterChain.doFilter(request, response);
             return;
