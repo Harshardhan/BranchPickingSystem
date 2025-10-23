@@ -31,9 +31,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         System.out.println("[JWT-FILTER] Incoming path = " + path);
 
         // Skip public endpoints
-        if (path.startsWith("/api/auth") ||
-        	    path.startsWith("/api/users/register") ||
-        	    path.startsWith("/actuator/health")) {
+        if (path.contains("/api/auth") ||
+        	    path.contains("/api/users/register") ||
+        	    path.contains("/actuator/health")) {
         	    filterChain.doFilter(request, response);
         	    return;
         	}
