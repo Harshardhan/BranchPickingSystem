@@ -28,25 +28,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String path = request.getRequestURI();
-        System.out.println("[JWT-FILTER] Incoming path = " + path);
+        System.out.println("[JWT-FILTER] Incoming Path : " + path);
 
-        // Adjust this to match the gateway forwarding path
-     // Skip public endpoints
-        if (path.startsWith("/users/register") ||
-        	    path.startsWith("/auth/") ||
-        	    path.startsWith("/actuator/")) {
-        	    System.out.println("[JWT-FILTER] Public endpoint detected, skipping JWT validation");
-        	    filterChain.doFilter(request, response);
-        	    return;
-        	}
+        // ✅ Public routes → No JWT required
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())
+                || path.contains("/auth/login")
+                || path.contains("/users/register")
+                || path.startsWith("/actuator")
+        ) {
+            System.out.println("[JWT-FILTER] Public endpoint, skipping token validation");
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // ✅ Already authenticated
         if (SecurityContextHolder.getContext().getAuthentication() != null) {
             filterChain.doFilter(request, response);
             return;
         }
 
+        // ✅ Extract Authorization Header
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
+            System.out.println("[JWT-FILTER] Missing Bearer token for secured endpoint");
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
 
@@ -59,13 +64,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             var authentication = new UsernamePasswordAuthenticationToken(username, null, authorities);
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
         } catch (Exception e) {
-            System.out.println("[JWT-FILTER] JWT validation failed: " + e.getMessage());
+            System.out.println("[JWT-FILTER] Invalid Token : " + e.getMessage());
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
         }
 
+        // ✅ Continue filter
         filterChain.doFilter(request, response);
     }
-
 }
