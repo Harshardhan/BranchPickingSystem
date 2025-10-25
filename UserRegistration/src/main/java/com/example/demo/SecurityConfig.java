@@ -43,7 +43,7 @@ public class SecurityConfig {
             // Authorization rules
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints (no token needed)
-                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/login.html", "/dashboard.html", "/css/**", "/js/**").permitAll()
