@@ -33,8 +33,7 @@ public class SecurityConfig {
 
         http.authorizeHttpRequests(auth -> auth
                 // ✅ Public authentication API
-                .requestMatchers("/auth/login", "/auth/register").permitAll()
-                .requestMatchers("/users/register").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
 
                 // ✅ Gateway Actuator/Health
                 .requestMatchers("/actuator/**").permitAll()
