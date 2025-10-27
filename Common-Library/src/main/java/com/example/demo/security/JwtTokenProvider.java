@@ -1,78 +1,49 @@
 package com.example.demo.security;
 
-import java.nio.charset.StandardCharsets;
-
-import java.time.Instant;
-import java.util.Date;
-import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import io.jsonwebtoken.*;
+import io.jsonwebtoken.security.Keys;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jws;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
-import jakarta.annotation.PostConstruct;
+import java.security.Key;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class JwtTokenProvider {
 
-    @Value("${security.jwt.secret}")
-    private String secret;
+    private final String SECRET = "MY_SECURED_JWT_SECRET_KEY_256BITS_EXAMPLE_1234"; 
+    private final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());
+    private final long EXPIRATION = 86400000; // 24 hours
 
-    @Value("${security.jwt.exp-seconds:3600}")
-    private long expSeconds;
-    
-    private static final Logger logger = LoggerFactory.getLogger(JwtTokenProvider.class);
-
-    public boolean validateToken(String token) {
-        try {
-            parse(token); // will throw if invalid
-            return true;
-        } catch (JwtException | IllegalArgumentException e) {
-            return false;
-        }
-    }
-
-    public String generateToken(UserDetails principal) {
-        Instant now = Instant.now();
-        List<String> roles = principal.getAuthorities()
+    public String generateToken(UserDetails userDetails) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("roles", userDetails.getAuthorities()
                 .stream()
-                .map(GrantedAuthority::getAuthority)
-                .toList();
+                .map(a -> a.getAuthority())
+                .collect(Collectors.toList()));
 
         return Jwts.builder()
-                .setSubject(principal.getUsername())
-                .claim("roles", roles)
-                .setIssuedAt(Date.from(now))
-                .setExpiration(Date.from(now.plusSeconds(expSeconds)))
-                .signWith(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)), SignatureAlgorithm.HS256)
+                .setClaims(claims)
+                .setSubject(userDetails.getUsername())
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))
+                .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
     public Jws<Claims> parse(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))
+                .setSigningKey(key)
                 .build()
                 .parseClaimsJws(token);
     }
-    
+
     public List<SimpleGrantedAuthority> getAuthoritiesFromClaims(Claims claims) {
-        var roles = (List<String>) claims.get("roles");
+        List<String> roles = claims.get("roles", List.class);
         return roles.stream()
                 .map(SimpleGrantedAuthority::new)
-                .toList();
-    }
-
-    @PostConstruct
-    public void logSecret() {
-        logger.info(">>> Loaded JWT Secret: " + secret);
+                .collect(Collectors.toList());
     }
 }

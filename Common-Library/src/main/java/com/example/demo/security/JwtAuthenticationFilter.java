@@ -30,16 +30,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         System.out.println("[JWT-FILTER] Incoming Path: " + path);
 
-        // ✅ Public routes (no JWT required)
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())
-                || path.startsWith("/api/auth/login")
-                || path.startsWith("/api/users/register")
-                || path.startsWith("/actuator")
-                || path.startsWith("/login.html")
-                || path.startsWith("/dashboard.html")
-                || path.startsWith("/css/")
-                || path.startsWith("/js/")
-        ) {
+        // ✅ Public endpoints (SKIP JWT validation)
+        if (path.startsWith("/api/auth/login") ||
+            path.startsWith("/api/users/register") ||
+            path.startsWith("/actuator")) {
+
             System.out.println("[JWT-FILTER] Public endpoint, skipping token validation");
             filterChain.doFilter(request, response);
             return;
@@ -51,7 +46,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // ✅ Extract Authorization header
+        // ✅ Extract token from Authorization header
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             System.out.println("[JWT-FILTER] Missing Bearer token for secured endpoint: " + path);
@@ -77,7 +72,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // ✅ Continue filter chain
         filterChain.doFilter(request, response);
     }
 }

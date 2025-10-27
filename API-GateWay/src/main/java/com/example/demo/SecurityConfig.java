@@ -32,17 +32,10 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         http.authorizeHttpRequests(auth -> auth
-                // ✅ Public authentication API
-                .requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/users/**").permitAll()
-
-                // ✅ Gateway Actuator/Health
+                .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
-
-                // ✅ Allow OPTIONS pre-flight for CORS
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                // ✅ Everything else requires JWT
                 .anyRequest().authenticated()
         );
 
