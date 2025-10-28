@@ -30,27 +30,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         System.out.println("[JWT-FILTER] Incoming Path: " + path);
 
-        // ✅ Public endpoints (SKIP JWT validation)
-        if (path.startsWith("/api/auth/login") ||
-            path.startsWith("/api/users/register") ||
-            path.startsWith("/actuator")) {
+        // ✅ Allow public endpoints without token
+        if (path.startsWith("/api/auth/login")
+                || path.equals("/api/users/register")
+                || path.startsWith("/actuator")
+                || request.getMethod().equals("OPTIONS")) {
 
-            System.out.println("[JWT-FILTER] Public endpoint, skipping token validation");
+            System.out.println("[JWT-FILTER] Public endpoint → skip token validation");
             filterChain.doFilter(request, response);
             return;
         }
 
-        // ✅ Already authenticated
-        if (SecurityContextHolder.getContext().getAuthentication() != null) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        // ✅ Extract token from Authorization header
+        // ✅ If token is missing → do NOT block (let controller security decide)
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            System.out.println("[JWT-FILTER] Missing Bearer token for secured endpoint: " + path);
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            System.out.println("[JWT-FILTER] No token → continuing request without authentication");
+            filterChain.doFilter(request, response);
             return;
         }
 
@@ -61,15 +56,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             var username = claims.getSubject();
             var authorities = jwtTokenProvider.getAuthoritiesFromClaims(claims);
 
-            var authentication = new UsernamePasswordAuthenticationToken(username, null, authorities);
-            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            var authentication =
+                    new UsernamePasswordAuthenticationToken(username, null, authorities);
+            authentication.setDetails(new WebAuthenticationDetailsSource()
+                    .buildDetails(request));
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
+            System.out.println("[JWT-FILTER] Token valid → Authenticated: " + username);
 
         } catch (Exception e) {
             System.out.println("[JWT-FILTER] Invalid Token: " + e.getMessage());
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
         }
 
         filterChain.doFilter(request, response);
