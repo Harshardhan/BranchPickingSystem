@@ -32,7 +32,7 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.POST,"/api/auth/login*").permitAll()  // ✅ allow ALL auth endpoints
+                .requestMatchers(HttpMethod.POST,"/api/auth/**").permitAll()  // ✅ allow ALL auth endpoints
                 .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll() // ✅ public register
                 .requestMatchers("/actuator/**").permitAll() // ✅ Allow healthcheck
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // ✅ CORS
