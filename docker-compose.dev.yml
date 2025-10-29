@@ -54,7 +54,7 @@ services:
   api-gateway:
     build:
       context: .
-      dockerfile: Api-GateWay/Dockerfile
+      dockerfile: API-Gateway/Dockerfile
     container_name: api-gateway
     ports:
       - "80:80"
