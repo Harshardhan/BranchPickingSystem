@@ -21,7 +21,7 @@
 	<modules>
 		<module>ConfigServerApp</module>
 		<module>EurekaServerApp</module>
-		<module>API-GateWay</module>
+		<module>API-Gateway</module>
 		<module>OrderServiceApplication</module>
 		<module>NotificationService</module>
 		<module>ProductServiceApplication</module>
