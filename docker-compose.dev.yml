@@ -73,6 +73,9 @@ services:
     environment:
       LOGSTASH_HOST: ${LOGSTASH_HOST}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80/actuator/health"]
