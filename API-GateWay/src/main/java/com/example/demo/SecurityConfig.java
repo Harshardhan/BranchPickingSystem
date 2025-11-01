@@ -12,19 +12,14 @@ public class SecurityConfig {
 
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
-        http
-            .csrf(ServerHttpSecurity.CsrfSpec::disable)
-            .authorizeExchange(exchange -> exchange
-                // 👇 Allow public access to login and registration
-                .pathMatchers("/api/auth/login", "/api/users/register").permitAll()
-                // 👇 Everything else requires authentication
-                .anyExchange().authenticated()
-            );
-
-        // (optional) Disable default login page for API gateway
-        http.httpBasic(ServerHttpSecurity.HttpBasicSpec::disable);
-        http.formLogin(ServerHttpSecurity.FormLoginSpec::disable);
-
-        return http.build();
+        return http
+                .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers("/api/auth/**", "/api/users/register").permitAll()
+                        .anyExchange().authenticated()
+                )
+                // ✅ JWT validation enabled
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt())
+                .build();
     }
 }
