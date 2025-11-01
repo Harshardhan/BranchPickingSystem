@@ -13,13 +13,6 @@ public class SecurityConfig {
     @Value("${spring.security.oauth2.resourceserver.jwt.secret}")
     private String jwtSecret;
 
-    @Bean
-    public ReactiveJwtDecoder jwtDecoder() {
-        // Same secret as used in JwtTokenProvider
-        return NimbusReactiveJwtDecoder.withSecretKey(
-                new javax.crypto.spec.SecretKeySpec(jwtSecret.getBytes(), "HmacSHA256")
-        ).build();
-    }
 
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
