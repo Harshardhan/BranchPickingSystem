@@ -31,6 +31,7 @@ public class NotificationConsumer {
                     .customerId(request.getCustomerId())
                     .orderId(request.getOrderId())
                     .productId(request.getProductId())
+                    .productName(request.getProductName())
                     .orderReference(request.getOrderReference())
                     .email(request.getEmail())
                     .message(request.getMessage())
