@@ -104,6 +104,7 @@ public class NotificationServiceImpl implements NotificationService {
         // Send Email
         if (notification.getType() == NotificationType.EMAIL) {
             logger.info("📧 Preparing to send email to {}", notification.getEmail());
+            logger.info("📦 Notification productName: {}", notification.getProductName());
 
             try {
             	String emailBody = String.format(
@@ -112,7 +113,7 @@ public class NotificationServiceImpl implements NotificationService {
             		    "Order Details:\n" +
             		    "Order ID: %s\n" +
             		    "Order Reference: %s\n" +
-            		    "Product: %s\n" +
+                        "Product: " + (notification.getProductName() != null ? notification.getProductName() : "Unknown") + "\n" +
             		    "Quantity: %d\n" +
             		    "Price: ₹%.2f\n" +
             		    "Payment Method: %s\n" +
