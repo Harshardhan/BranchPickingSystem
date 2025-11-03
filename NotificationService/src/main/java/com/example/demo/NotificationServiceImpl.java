@@ -94,7 +94,7 @@ public class NotificationServiceImpl implements NotificationService {
                         .paymentMethod(notification.getPaymentMethod())
                         .price(notification.getPrice())
                         .quantity(notification.getQuantity())
-                        .productName(productName)
+                        .productName(notification.getProductName())
                         .type(notification.getType())
                         .sent(false)
                         .sentAt(LocalDateTime.now())
@@ -107,29 +107,30 @@ public class NotificationServiceImpl implements NotificationService {
             logger.info("📦 Notification productName: {}", notification.getProductName());
 
             try {
-            	String emailBody = String.format(
-            		    "Dear Customer,\n\n" +
-            		    "Your order has been placed successfully! 🧾\n\n" +
-            		    "Order Details:\n" +
-            		    "Order ID: %s\n" +
-            		    "Order Reference: %s\n" +
-                        "Product: " + (notification.getProductName() != null ? notification.getProductName() : "Unknown") + "\n" +
-            		    "Quantity: %d\n" +
-            		    "Price: ₹%.2f\n" +
-            		    "Payment Method: %s\n" +
-            		    "Shipping Address: %s\n\n" +
-            		    "Thank you for shopping with us!\n",
-            		    notification.getOrderId(),
-            		    notification.getOrderReference(),
-            		    productName != null ? productName : "N/A",  // <-- use this instead
-            		    notification.getQuantity(),
-            		    notification.getPrice(),
-            		    notification.getPaymentMethod(),
-            		    notification.getAddress()
-            		);
-            		sendEmail(notification.getEmail(), "Order Confirmation", emailBody);
-                logger.info("✅ Email sent successfully to {}", notification.getEmail());
+                String emailBody = String.format(
+                    "Dear Customer,\n\n" +
+                    "Your order has been placed successfully! 🧾\n\n" +
+                    "Order Details:\n" +
+                    "Order ID: %s\n" +
+                    "Order Reference: %s\n" +
+                    "Product: %s\n" +
+                    "Quantity: %d\n" +
+                    "Price: ₹%.2f\n" +
+                    "Payment Method: %s\n" +
+                    "Shipping Address: %s\n\n" +
+                    "Thank you for shopping with us!\n",
+                    notification.getOrderId(),
+                    notification.getOrderReference(),
+                    (notification.getProductName() != null ? notification.getProductName() : "Unknown"),
+                    notification.getQuantity(),
+                    notification.getPrice(),
+                    notification.getPaymentMethod(),
+                    notification.getAddress()
+                );
 
+                sendEmail(notification.getEmail(), "Order Confirmation", emailBody);
+                logger.info("✅ Email sent successfully to {}", notification.getEmail());
+            
                 // Mark as sent
                 savedNotification = savedNotification.toBuilder().sent(true).build();
                 notificationRepository.save(savedNotification);
