@@ -68,8 +68,13 @@ public class NotificationServiceImpl implements NotificationService {
             logger.debug("🔍 Fetching product with ID: {}", notification.getProductId());
             Product product = productServiceClient.getProductDetails(notification.getProductId());
             productName = product != null ? product.getProductName() : "Unknown Product";
+            // ✅ Save the product name back to notification object
+            notification.setProductName(productName);
+
         } catch (Exception e) {
             logger.warn("⚠️ Failed to fetch product details: {}", e.getMessage());
+            notification.setProductName("Unknown Product");
+
 
         }
 
