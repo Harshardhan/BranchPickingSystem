@@ -40,7 +40,8 @@ public class OrderController {
 	public ResponseEntity<Order> placeOrder(@RequestBody @Valid Order order)
 			throws InValidOrderException, OrderAlreadyExistsException {
 		Order createdOrder = orderService.placeOrder(order);
-		logger.info("Order created successfully - OrderId: {}, Customer: {}", order.toString());
+		logger.info("✅ Order created successfully! ID: {}, Product: {}, CustomerID: {}", 
+	             order.getId(), order.getProductName(), order.getCustomerId());
 		return new ResponseEntity<>(createdOrder, HttpStatus.CREATED);
 	}
 

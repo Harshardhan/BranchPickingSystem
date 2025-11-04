@@ -62,6 +62,8 @@ public class OrderServiceImpl implements OrderService {
             product.getProductName().equalsIgnoreCase("Unknown") ||
             product.getId() == null ||
             !product.getId().equals(order.getProductId())) {
+            logger.error("❌ Invalid Product ID or fallback response received for ID: {}", order.getProductId());
+
             throw new InValidOrderException("Invalid Product ID: " + order.getProductId());
         }
      order.setProductName(product.getProductName());
