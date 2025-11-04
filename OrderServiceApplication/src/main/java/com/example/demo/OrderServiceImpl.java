@@ -53,15 +53,17 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // 2. Validate product
+     // After fetching the product
         Product product = productClient.getProductById(order.getProductId());
 
-     // Reject fallback responses
-     if (product == null ||
-         product.getProductName() == null ||
-         product.getProductName().equalsIgnoreCase("Fallback Product")) {
-         throw new InValidOrderException("Invalid Product ID: " + order.getProductId());
-     }
-
+        if (product == null ||
+            product.getProductName() == null ||
+            product.getProductName().equalsIgnoreCase("Fallback Product") ||
+            product.getProductName().equalsIgnoreCase("Unknown") ||
+            product.getId() == null ||
+            !product.getId().equals(order.getProductId())) {
+            throw new InValidOrderException("Invalid Product ID: " + order.getProductId());
+        }
      order.setProductName(product.getProductName());
 
         // 3. Save order
