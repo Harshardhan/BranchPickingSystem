@@ -50,10 +50,4 @@ public class Analytics {
 	@UpdateTimestamp
 	private LocalDateTime updatedAt;
 
-	@Override
-	public String toString() {
-		return "Analytics [id=" + id + ", customerId=" + customerId + ", productId=" + productId + ", orderId="
-				+ orderId + ", description=" + description + ", emailAddress=" + emailAddress + ", phoneNumber="
-				+ phoneNumber + ", createdAt=" + createdAt + ", updatedAt=" + updatedAt + "]";
-	}
 }

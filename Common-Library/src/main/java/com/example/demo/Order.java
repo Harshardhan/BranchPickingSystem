@@ -1,18 +1,19 @@
 package com.example.demo;
 
-import java.io.Serializable;
+
 import java.math.BigDecimal;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
 @Setter
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-
-public class Order implements Serializable {
+@ToString
+public class Order   {
 
 	private Long id;
 	private Long customerId;

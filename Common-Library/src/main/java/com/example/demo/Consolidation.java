@@ -1,12 +1,14 @@
 package com.example.demo;
 
 import java.math.BigDecimal;
+
 import java.time.LocalDate;
 import lombok.*;
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@ToString
 public class Consolidation {
 
     private Long id;

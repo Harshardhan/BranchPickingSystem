@@ -3,12 +3,9 @@ package com.example.demo;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -19,7 +16,6 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -77,14 +73,6 @@ public class Product implements Serializable {
     @LastModifiedDate
     private LocalDate updatedAt;
 
-	@Override
-	public String toString() {
-		return "Product [id=" + id + ", customerId=" + customerId + ", productName=" + productName + ", description="
-				+ description + ", price=" + price + ", currencyCode=" + currencyCode + ", availableQuantity="
-				+ availableQuantity + ", category=" + category + ", expiryDate=" + expiryDate + ", manufacturingDate="
-				+ manufacturingDate + ", email=" + email + ", isActive=" + isActive + ", createdAt=" + createdAt
-				+ ", updatedAt=" + updatedAt + "]";
-	}
 
     
     

@@ -1,14 +1,9 @@
 package com.example.demo;
 
-import java.io.Serializable;
 import java.math.BigDecimal;
-
-
 import java.time.LocalDateTime;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -71,16 +66,5 @@ public class Order  {
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
-
-	@Override
-	public String toString() {
-		return "Order [id=" + id + ", customerId=" + customerId + ", productId=" + productId + ", productName="
-				+ productName + ", description=" + description + ", quantity=" + quantity + ", price=" + price
-				+ ", orderType=" + orderType + ", orderReference=" + orderReference + ", paymentMethod=" + paymentMethod
-				+ ", email=" + email + ", address=" + address + ", orderStatus=" + orderStatus + ", createdAt="
-				+ createdAt + ", updatedAt=" + updatedAt + "]";
-	}
-
-    
 
 }

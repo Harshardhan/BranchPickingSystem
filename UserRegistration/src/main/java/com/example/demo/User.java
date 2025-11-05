@@ -2,17 +2,9 @@ package com.example.demo;
 
 
 import java.time.LocalDateTime;
-
-import java.util.HashSet;
 import java.util.Set;
-
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
@@ -104,17 +96,6 @@ public class User {
 		}
 		this.createdAt = LocalDateTime.now();
 		this.updatedAt = LocalDateTime.now();
-	}
-
-	@Override
-	public String toString() {
-		return "User [id=" + id + ", userName=" + userName + ", password=" + password + ", firstName=" + firstName
-				+ ", lastName=" + lastName + ", emailId=" + emailId + ", mobileNumber=" + mobileNumber + ", address="
-				+ address + ", roles=" + roles + ", failedLoginAttempts=" + failedLoginAttempts + ", lastLoginAt="
-				+ lastLoginAt + ", passwordChangedAt=" + passwordChangedAt + ", isEmailVerified=" + isEmailVerified
-				+ ", isMobileVerified=" + isMobileVerified + ", accountLocked=" + accountLocked + ", createdBy="
-				+ createdBy + ", updatedBy=" + updatedBy + ", deletedAt=" + deletedAt + ", userStatus=" + userStatus
-				+ ", createdAt=" + createdAt + ", updatedAt=" + updatedAt + "]";
 	}
 
 }

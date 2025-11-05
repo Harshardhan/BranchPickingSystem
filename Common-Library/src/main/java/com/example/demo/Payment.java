@@ -1,6 +1,6 @@
 package com.example.demo;
 
-import java.io.Serializable;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -9,14 +9,15 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-
-public class Payment implements Serializable {
+@ToString
+public class Payment   {
 
 	
 	private Long userId;

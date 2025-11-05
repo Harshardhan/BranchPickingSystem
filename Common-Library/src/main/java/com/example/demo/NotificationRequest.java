@@ -1,8 +1,5 @@
 package com.example.demo;
 
-import java.io.Serializable;
-
-
 import java.math.BigDecimal;
 import lombok.*;
 
@@ -12,7 +9,8 @@ import lombok.*;
 @NoArgsConstructor
 @Builder
 @Data
-public class NotificationRequest implements Serializable{
+@ToString
+public class NotificationRequest  {
 
     private Long customerId;
     private Long orderId;
