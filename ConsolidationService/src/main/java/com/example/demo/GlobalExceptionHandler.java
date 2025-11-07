@@ -7,6 +7,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
+
+import com.example.demo.excpetions.ErrorResponse;
+import com.example.demo.excpetions.UserNotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -18,30 +22,26 @@ public class GlobalExceptionHandler {
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     // Handling ConsolidationNotFoundException
-    @ExceptionHandler(ConsolidationNotFoundException.class)
-    public ResponseEntity<Object> handleConsolidationNotFoundException(ConsolidationNotFoundException ex) {
-        logger.error("Consolidation Not Found: {}", ex.getMessage());
+	@ExceptionHandler(ConsolidationNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleConsolidationNotFoundException(ConsolidationNotFoundException ex, WebRequest request) {
+		logger.warn("Consolidation not found: {}", ex.getMessage());
+		logger.error("Unhandled exception [{}]: {}", ex.getClass().getSimpleName(), ex.getMessage(), ex);
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.NOT_FOUND.value());
-        response.put("error", "Not Found");
-        response.put("message", ex.getMessage());
+		return buildErrorResponse("Consolidation Not Found", ex.getMessage(), HttpStatus.NOT_FOUND, request);
+	}
+	
+	private ResponseEntity<ErrorResponse> buildErrorResponse(
+	        String errorTitle, String message, HttpStatus status, WebRequest request) {
+	    
+	    ErrorResponse error = new ErrorResponse(
+	        errorTitle,
+	        message,
+	        status.value(), // ✅ pass int instead of String
+	        LocalDateTime.now(),
+	        request.getDescription(false).replace("uri=", "")
+	    );
+	    
+	    return new ResponseEntity<>(error, status);
+	}
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-    }
-
-    // Handling all other exceptions globally
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<Object> handleGlobalException(Exception ex) {
-        logger.error("Unexpected Error: {}", ex.getMessage(), ex);
-
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
-        response.put("error", "Internal Server Error");
-        response.put("message", "An unexpected error occurred. Please try again later.");
-
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-    }
 }

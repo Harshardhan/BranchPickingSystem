@@ -1,16 +1,17 @@
 package com.example.demo;
 
 import java.time.LocalDateTime;
-import org.springframework.web.servlet.resource.NoResourceFoundException;
-
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import com.example.demo.excpetions.ErrorResponse;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -32,31 +33,40 @@ public class GlobalExceptionHandler {
         return buildErrorResponse("Invalid Product", ex.getMessage(), HttpStatus.BAD_REQUEST, request);
     }
 
-    // Generic fallback for unexpected exceptions
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleAllExceptions(Exception ex, WebRequest request) {
-        // Avoid logging for Spring's static resource errors like /metrics, /favicon.ico, etc.
-        if (ex instanceof NoResourceFoundException) {
-            return buildErrorResponse(
-                "Resource Not Found",
-                "The requested resource could not be found.",
-                HttpStatus.NOT_FOUND,
-                request
-            );
-        }
-
-        logger.error("Unhandled Exception: ", ex);
-        return buildErrorResponse("Internal Server Error", ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR, request);
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex, WebRequest request) {
+        return buildErrorResponse("Method Not Allowed", ex.getMessage(), HttpStatus.METHOD_NOT_ALLOWED, request);
     }
 
-    private ResponseEntity<ErrorResponse> buildErrorResponse(String errorTitle, String message, HttpStatus status, WebRequest request) {
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleAllExceptions(Exception ex, WebRequest request) {
+        if (ex instanceof NoResourceFoundException) {
+            return buildErrorResponse("Resource Not Found",
+                "The requested resource could not be found.",
+                HttpStatus.NOT_FOUND,
+                request);
+        }
+
+        logger.error("Unhandled exception [{}]: {}", ex.getClass().getSimpleName(), ex.getMessage(), ex);
+        return buildErrorResponse(
+            "Internal Server Error",
+            "An unexpected error occurred. Please try again later.",
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            request
+        );
+    }
+
+    private ResponseEntity<ErrorResponse> buildErrorResponse(
+            String errorTitle, String message, HttpStatus status, WebRequest request) {
+        
         ErrorResponse error = new ErrorResponse(
             errorTitle,
             message,
-            status.toString(),
+            status.value(), // ✅ pass int instead of String
             LocalDateTime.now(),
             request.getDescription(false).replace("uri=", "")
         );
+        
         return new ResponseEntity<>(error, status);
     }
 }

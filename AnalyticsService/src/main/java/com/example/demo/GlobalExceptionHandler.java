@@ -67,11 +67,18 @@ public class GlobalExceptionHandler {
 		return buildErrorResponse("Internal Server Error", ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR, request);
 	}
 
-	private ResponseEntity<ErrorResponse> buildErrorResponse(String errorTitle, String message, HttpStatus status,
-			WebRequest request) {
-		ErrorResponse error = new ErrorResponse(errorTitle, message, status.toString(), LocalDateTime.now(),
-				request.getDescription(false).replace("uri=", ""));
-		return new ResponseEntity<>(error, status);
+	private ResponseEntity<ErrorResponse> buildErrorResponse(
+	        String errorTitle, String message, HttpStatus status, WebRequest request) {
+	    
+	    ErrorResponse error = new ErrorResponse(
+	        errorTitle,
+	        message,
+	        status.value(), // ✅ pass int instead of String
+	        LocalDateTime.now(),
+	        request.getDescription(false).replace("uri=", "")
+	    );
+	    
+	    return new ResponseEntity<>(error, status);
 	}
 
 

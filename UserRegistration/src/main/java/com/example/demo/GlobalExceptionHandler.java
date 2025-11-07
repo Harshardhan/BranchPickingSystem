@@ -9,8 +9,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -25,6 +27,7 @@ public class GlobalExceptionHandler {
 
 	private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+	@ResponseStatus(HttpStatus.BAD_REQUEST)
 	@ExceptionHandler(ConstraintViolationException.class)
 	public ResponseEntity<ErrorResponse> handleConstraintViolationException(ConstraintViolationException ex,
 			WebRequest request) {
@@ -32,13 +35,15 @@ public class GlobalExceptionHandler {
 			    .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
 			    .collect(Collectors.joining(", "));
 
-		logger.warn("Constraint violation: {}", errors);
+		logger.error("Unhandled exception [{}]: {}", ex.getClass().getSimpleName(), ex.getMessage(), ex);
 		return buildErrorResponse("Validation Error", errors, HttpStatus.BAD_REQUEST, request);
 	}
 
 	@ExceptionHandler(UserNotFoundException.class)
 	public ResponseEntity<ErrorResponse> handleUserNotFoundException(UserNotFoundException ex, WebRequest request) {
 		logger.warn("User not found: {}", ex.getMessage());
+		logger.error("Unhandled exception [{}]: {}", ex.getClass().getSimpleName(), ex.getMessage(), ex);
+
 		return buildErrorResponse("User Not Found", ex.getMessage(), HttpStatus.NOT_FOUND, request);
 	}
 
@@ -54,6 +59,11 @@ public class GlobalExceptionHandler {
 		logger.warn("Invalid user data: {}", ex.getMessage());
 		return buildErrorResponse("Invalid User", ex.getMessage(), HttpStatus.BAD_REQUEST, request);
 	}
+	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+	public ResponseEntity<ErrorResponse> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex, WebRequest request) {
+	    return buildErrorResponse("Method Not Allowed", ex.getMessage(), HttpStatus.METHOD_NOT_ALLOWED, request);
+	}
+
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex,
@@ -62,7 +72,7 @@ public class GlobalExceptionHandler {
 			    .map(error -> error.getField() + ": " + error.getDefaultMessage())
 			    .collect(Collectors.joining(", "));
 
-		logger.warn("Validation failed: {}", errors);
+		logger.error("Unhandled exception [{}]: {}", ex.getClass().getSimpleName(), ex.getMessage(), ex);
 		return buildErrorResponse("Validation Error", errors, HttpStatus.BAD_REQUEST, request);
 	}
 
@@ -82,10 +92,17 @@ public class GlobalExceptionHandler {
 		);
 	}
 
-	private ResponseEntity<ErrorResponse> buildErrorResponse(String errorTitle, String message, HttpStatus status,
-			WebRequest request) {
-		ErrorResponse error = new ErrorResponse(errorTitle, message, status.toString(), LocalDateTime.now(),
-				request.getDescription(false).replace("uri=", ""));
-		return new ResponseEntity<>(error, status);
+	private ResponseEntity<ErrorResponse> buildErrorResponse(
+	        String errorTitle, String message, HttpStatus status, WebRequest request) {
+	    
+	    ErrorResponse error = new ErrorResponse(
+	        errorTitle,
+	        message,
+	        status.value(), // ✅ pass int instead of String
+	        LocalDateTime.now(),
+	        request.getDescription(false).replace("uri=", "")
+	    );
+	    
+	    return new ResponseEntity<>(error, status);
 	}
 }
