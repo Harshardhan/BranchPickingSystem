@@ -1,6 +1,6 @@
 package com.example.demo.excpetions;
 
-public class PaymentNotFoundException extends Exception {
+public class PaymentNotFoundException extends ResourceNotFoundException {
 
 	public PaymentNotFoundException(String message) {
 	super(message);
