@@ -16,6 +16,7 @@ import com.example.demo.excpetions.InValidOrderException;
 import com.example.demo.excpetions.OrderAlreadyExistsException;
 import com.example.demo.excpetions.OrderNotFoundException;
 import com.example.demo.excpetions.UnauthorizedOrderAccessException;
+import com.example.demo.security.JwtUtils;
 
 @Service
 @Transactional
@@ -199,8 +200,26 @@ public class OrderServiceImpl implements OrderService {
 
 	@Override
 	public List<Order> getOrdersForCustomer(Long customerId) throws UnauthorizedOrderAccessException {
-		logger.warn("getOrdersForCustomer is not yet implemented.");
-		throw new UnauthorizedOrderAccessException("getOrdersForCustomer is not yet implemented.");
+	    logger.info("Fetching orders for customerId {}", customerId);
+
+	    Long authenticatedUserId = JwtUtils.getAuthenticatedUserId();
+
+	    if (authenticatedUserId == null) {
+	        throw new UnauthorizedOrderAccessException("User not authenticated or token invalid.");
+	    }
+
+	    if (!authenticatedUserId.equals(customerId)) {
+	        logger.warn("User {} tried to access orders of another customer {}", authenticatedUserId, customerId);
+	        throw new UnauthorizedOrderAccessException("You are not authorized to access these orders.");
+	    }
+
+	    List<Order> orders = orderRepository.findByCustomerId(customerId);
+	    if (orders.isEmpty()) {
+	        throw new OrderNotFoundException("No orders found for customer " + customerId);
+	    }
+
+	    logger.info("✅ Retrieved {} orders for authenticated user {}", orders.size(), authenticatedUserId);
+	    return orders;
 	}
 
 	@Override
