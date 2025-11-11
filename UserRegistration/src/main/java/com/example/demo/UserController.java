@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,6 +40,8 @@ public class UserController {
 	}
 	
 	@PutMapping("/{id}")
+    @PreAuthorize("#id == authentication.principal.id or hasRole('ADMIN')")
+
 	public ResponseEntity<User> updateUser(@PathVariable("id") Long id ,@RequestBody @Valid User updatedUser)throws UserNotFoundException{
 		User usersUpdated = userService.updateUser(id, updatedUser);
 		logger.info("Successfully updated users with ID {}",id);
@@ -46,6 +49,8 @@ public class UserController {
 	}
 	
 	@DeleteMapping("/{id}")
+    @PreAuthorize("#id == authentication.principal.id or hasRole('ADMIN')")
+
 	public ResponseEntity<Void> deleteUser(@PathVariable("id")Long id)throws UserNotFoundException{
 		userService.deleteUser(id);
 		logger.info("User with ID {} deleted Successfully",id);
@@ -53,6 +58,8 @@ public class UserController {
 	}
 	
 	@GetMapping("/{id}")
+    @PreAuthorize("#id == authentication.principal.id or hasRole('ADMIN')")
+
 	public ResponseEntity<User> getUserById(@PathVariable("id") Long id)throws UserNotFoundException{
         logger.info("🔍 Request to fetch user with ID: {}", id);
         User users = userService.getUserById(id);
@@ -60,6 +67,8 @@ public class UserController {
 	}
 	
     @GetMapping("/all")
+    @PreAuthorize("#id == authentication.principal.id or hasRole('ADMIN')")
+
     public ResponseEntity<List<User>> getAllUsers() throws UserNotFoundException {
         logger.info("📦 Request to fetch all Users");
         List<User> users = userService.getAllUsers();
@@ -69,6 +78,8 @@ public class UserController {
     
 
     @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+
     public ResponseEntity<User> getMyProfile(Authentication authentication) throws UserNotFoundException {
         String username = authentication.getName();  // comes from JWT
         User user = userService.getUserByUserName(username);
