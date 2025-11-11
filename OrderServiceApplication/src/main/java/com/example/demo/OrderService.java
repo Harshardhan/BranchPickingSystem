@@ -23,7 +23,7 @@ public interface OrderService {
 	
 	public void deleteOrder(Long orderId)throws OrderNotFoundException;
 	
-	public List<Order> getOrdersForCustomer(Long customerId)throws UnauthorizedOrderAccessException;
+	public Order getOrderById(Long orderId)throws UnauthorizedOrderAccessException;
 	
 	public Order findByOrderReference(String orderReference)throws OrderNotFoundException;
 	

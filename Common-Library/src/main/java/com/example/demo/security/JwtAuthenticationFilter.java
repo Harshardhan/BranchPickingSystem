@@ -52,16 +52,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = authHeader.substring(7);
 
         try {
-            var claims = jwtTokenProvider.parse(token).getBody();
-            var username = claims.getSubject();
-            var authorities = jwtTokenProvider.getAuthoritiesFromClaims(claims);
+        	var claims = jwtTokenProvider.parse(token).getBody();
+        	String username = claims.getSubject();
+        	Long userId = jwtTokenProvider.getUserIdFromClaims(claims); // ✅ extract userId
+        	var authorities = jwtTokenProvider.getAuthoritiesFromClaims(claims);
 
-            var authentication =
-                    new UsernamePasswordAuthenticationToken(username, null, authorities);
-            authentication.setDetails(new WebAuthenticationDetailsSource()
-                    .buildDetails(request));
+        	// 👇 Include userId in the authentication principal
+        	var authentication = new UsernamePasswordAuthenticationToken(userId, authorities);
+        	authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+        	SecurityContextHolder.getContext().setAuthentication(authentication);
             System.out.println("[JWT-FILTER] Token valid → Authenticated: " + username);
 
         } catch (Exception e) {

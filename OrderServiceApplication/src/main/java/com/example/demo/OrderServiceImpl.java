@@ -199,27 +199,29 @@ public class OrderServiceImpl implements OrderService {
 	}
 
 	@Override
-	public List<Order> getOrdersForCustomer(Long customerId) throws UnauthorizedOrderAccessException {
-	    logger.info("Fetching orders for customerId {}", customerId);
+	public Order getOrderById(Long orderId) throws UnauthorizedOrderAccessException {
+	    logger.info("Fetching order with ID {}", orderId);
 
 	    Long authenticatedUserId = JwtUtils.getAuthenticatedUserId();
+	    Long userRole = JwtUtils.getAuthenticatedUserId();
 
 	    if (authenticatedUserId == null) {
 	        throw new UnauthorizedOrderAccessException("User not authenticated or token invalid.");
 	    }
 
-	    if (!authenticatedUserId.equals(customerId)) {
-	        logger.warn("User {} tried to access orders of another customer {}", authenticatedUserId, customerId);
-	        throw new UnauthorizedOrderAccessException("You are not authorized to access these orders.");
+	    // ✅ Step 1: Fetch the order
+	    Order order = orderRepository.findById(orderId)
+	            .orElseThrow(() -> new OrderNotFoundException("Order not found with ID " + orderId));
+
+	    // ✅ Step 2: Authorization check
+	    if (!authenticatedUserId.equals(order.getCustomerId())) {
+	        logger.warn("User {} tried to access order {} belonging to customer {}",
+	                authenticatedUserId, orderId, order.getCustomerId());
+	        throw new UnauthorizedOrderAccessException("You are not authorized to view this order.");
 	    }
 
-	    List<Order> orders = orderRepository.findByCustomerId(customerId);
-	    if (orders.isEmpty()) {
-	        throw new OrderNotFoundException("No orders found for customer " + customerId);
-	    }
-
-	    logger.info("✅ Retrieved {} orders for authenticated user {}", orders.size(), authenticatedUserId);
-	    return orders;
+	    logger.info("✅ Order {} retrieved successfully for user {}", orderId, authenticatedUserId);
+	    return order;
 	}
 
 	@Override

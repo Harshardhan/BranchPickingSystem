@@ -1,6 +1,7 @@
 package com.example.demo;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,10 +101,10 @@ public class OrderController {
 	    return ResponseEntity.ok(orderProcess);
 	}
 	
-	@GetMapping("/order/{id}")
-	public ResponseEntity<List<Order>> getOrdersForCustomer(@PathVariable("id") Long customerId) throws UnauthorizedOrderAccessException {
-	    List<Order> ordersCustomer = orderService.getOrdersForCustomer(customerId);
-	    logger.info("Successfully retrieved orders for customer {}", customerId);
-	    return ResponseEntity.ok(ordersCustomer);
+	@GetMapping("/{id}")
+	public ResponseEntity<Order> getOrderById(@PathVariable("id") Long orderId) {
+	    Order order = orderService.getOrderById(orderId);
+	    logger.info("Successfully retrieved order with ID {}", orderId);
+	    return ResponseEntity.ok(order);
 	}
 }

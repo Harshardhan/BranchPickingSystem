@@ -2,8 +2,8 @@ package com.example.demo.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
@@ -17,8 +17,10 @@ public class JwtTokenProvider {
     private final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());
     private final long EXPIRATION = 86400000; // 24 hours
 
-    public String generateToken(UserDetails userDetails) {
+    // ✅ Include userId in token claims
+    public String generateToken(UserDetails userDetails, Long userId) {
         Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", userId);
         claims.put("roles", userDetails.getAuthorities()
                 .stream()
                 .map(a -> a.getAuthority())
@@ -40,8 +42,16 @@ public class JwtTokenProvider {
                 .parseClaimsJws(token);
     }
 
+    // ✅ Extract userId from token claims
+    public Long getUserIdFromClaims(Claims claims) {
+        return claims.get("userId", Long.class);
+    }
+
+    // ✅ Extract authorities (roles) from token claims
     public List<SimpleGrantedAuthority> getAuthoritiesFromClaims(Claims claims) {
         List<String> roles = claims.get("roles", List.class);
+        if (roles == null) return Collections.emptyList();
+
         return roles.stream()
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toList());
