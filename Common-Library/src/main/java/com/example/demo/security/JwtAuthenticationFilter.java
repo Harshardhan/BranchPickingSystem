@@ -1,6 +1,7 @@
 package com.example.demo.security;
 
 import jakarta.servlet.FilterChain;
+
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -52,17 +53,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = authHeader.substring(7);
 
         try {
-        	var claims = jwtTokenProvider.parse(token).getBody();
-        	String username = claims.getSubject();
-        	Long userId = jwtTokenProvider.getUserIdFromClaims(claims); // ✅ extract userId
-        	var authorities = jwtTokenProvider.getAuthoritiesFromClaims(claims);
+            var claims = jwtTokenProvider.parse(token).getBody();
+            String username = claims.getSubject();
+            Long userId = jwtTokenProvider.getUserIdFromClaims(claims);
+            var authorities = jwtTokenProvider.getAuthoritiesFromClaims(claims);
 
-        	// 👇 Include userId in the authentication principal
-        	var authentication = new UsernamePasswordAuthenticationToken(userId, authorities);
-        	authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+         // Create a principal object with both id and username
+            UserPrincipal principal = new UserPrincipal(userId, username);
 
-        	SecurityContextHolder.getContext().setAuthentication(authentication);
+            // Create authentication with correct parameters
+            var authentication = new UsernamePasswordAuthenticationToken(
+                    principal,  // principal (has id and username)
+                    null,       // no credentials
+                    authorities // user roles
+            );
+            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
             System.out.println("[JWT-FILTER] Token valid → Authenticated: " + username);
+        
 
         } catch (Exception e) {
             System.out.println("[JWT-FILTER] Invalid Token: " + e.getMessage());
