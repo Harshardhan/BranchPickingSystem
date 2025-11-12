@@ -2,35 +2,44 @@ package com.example.demo;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
-import com.example.demo.OrderRepository;
-
+import com.example.demo.OrderService;
+import com.example.demo.security.*;
 @Component("orderSecurity")
 public class OrderSecurity {
 
-    private final OrderRepository orderRepository;
+    private final OrderService orderService;
 
-    public OrderSecurity(OrderRepository orderRepository) {
-        this.orderRepository = orderRepository;
+    public OrderSecurity(OrderService orderService) {
+        this.orderService = orderService;
     }
 
-    // check if the logged-in user owns this order
     public boolean hasAccessToOrder(Long orderId, Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) return false;
+        Long authenticatedUserId = JwtUtils.getAuthenticatedUserId();
 
-        String username = authentication.getName(); // from JWT
-        var order = orderRepository.findById(orderId);
-        return order.isPresent() && 
-               (order.get().getUserName().equals(username) || 
-                authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")));
+        if (authentication == null || authenticatedUserId == null) return false;
+
+        // Admins always allowed
+        if (authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+            return true;
+        }
+
+        // Otherwise check if this order belongs to the authenticated user
+        Long orderOwnerId = orderService.getOrderById(orderId).getCustomerId();
+        return authenticatedUserId.equals(orderOwnerId);
     }
 
     public boolean hasAccessToOrderReference(String orderReference, Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) return false;
+        Long authenticatedUserId = JwtUtils.getAuthenticatedUserId();
 
-        String username = authentication.getName();
-        var order = orderRepository.findByOrderReferenceIgnoreCase(orderReference);
-        return order.isPresent() && 
-               (order.get().getUserName().equals(username) ||
-                authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")));
+        if (authentication == null || authenticatedUserId == null) return false;
+
+        if (authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+            return true;
+        }
+
+        Long orderOwnerId = orderService.findByOrderReference(orderReference).getCustomerId();
+        return authenticatedUserId.equals(orderOwnerId);
     }
 }

@@ -67,7 +67,7 @@ public class UserController {
 	}
 	
     @GetMapping("/all")
-    @PreAuthorize("#id == authentication.principal.id or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
 
     public ResponseEntity<List<User>> getAllUsers() throws UserNotFoundException {
         logger.info("📦 Request to fetch all Users");

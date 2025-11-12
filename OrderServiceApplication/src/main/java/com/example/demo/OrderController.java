@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,6 +39,8 @@ public class OrderController {
 	}
 
 	@PostMapping()
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+
 	public ResponseEntity<Order> placeOrder(@RequestBody @Valid Order order)
 			throws InValidOrderException, OrderAlreadyExistsException {
 		Order createdOrder = orderService.placeOrder(order);
@@ -47,9 +50,9 @@ public class OrderController {
 	}
 
 
-	@GetMapping("/customer/{id}")
-	public ResponseEntity<List<Order>> findByCustomerId(@PathVariable("id") Long customerId)
-			throws OrderNotFoundException {
+	@GetMapping("/customer/{customerId}")
+	@PreAuthorize("#customerId == authentication.principal.id or hasRole('ADMIN')")
+	public ResponseEntity<List<Order>> findByCustomerId(@PathVariable Long customerId)throws OrderNotFoundException{
 		List<Order> orders = orderService.findByCustomerId(customerId);
 		if (orders.isEmpty()) {
 			logger.error("Failed to retrieve details: No orders found for customerId {}", customerId);
@@ -62,6 +65,8 @@ public class OrderController {
 
 
 	@GetMapping()
+    @PreAuthorize("hasRole('ADMIN')")
+
 	public ResponseEntity<List<Order>> getAllOrders() {
 		List<Order> orders = orderService.getAllOrders();
 
@@ -75,6 +80,8 @@ public class OrderController {
 	}
 	
 	@PutMapping("/{id}")
+    @PreAuthorize("@orderSecurity.hasAccessToOrder(#orderId, authentication)")
+
 	public ResponseEntity<Order> updateOrder(@PathVariable("id") Long orderId, @RequestBody @Valid Order updatedOrder) throws OrderNotFoundException {
 	    Order updated = orderService.updateOrder(orderId, updatedOrder);  // ✅ Correct: Return single Order
 	    logger.info("Successfully updated order with orderId {}", orderId);
@@ -82,6 +89,8 @@ public class OrderController {
 	}
 	
 	@DeleteMapping("/{id}")
+    @PreAuthorize("@orderSecurity.hasAccessToOrder(#orderId, authentication)")
+
 	public ResponseEntity<Void> deleteOrder(@PathVariable("id") Long orderId) throws OrderNotFoundException {
 	    orderService.deleteOrder(orderId);
 	    logger.info("Order with ID {} deleted successfully", orderId);
@@ -89,12 +98,16 @@ public class OrderController {
 	}
 	
 	@GetMapping("/reference/{orderReference}")
+    @PreAuthorize("@orderSecurity.hasAccessToOrderReference(#orderReference, authentication)")
+
 	public ResponseEntity<Order> findByOrderReference(@PathVariable String orderReference) throws OrderNotFoundException {
 	    Order referenceOrder = orderService.findByOrderReference(orderReference);
 	    logger.info("Successfully retrieved details of an order with orderReference {}", orderReference);
 	    return ResponseEntity.ok(referenceOrder);
 	}
 	@PutMapping("/{orderId}/process") // ✅ Change "id" to "orderId"
+    @PreAuthorize("hasRole('ADMIN')")
+
 	public ResponseEntity<List<Order>> processOrder(@PathVariable("orderId") Long orderId) throws OrderProcessingException {
 	    List<Order> orderProcess = orderService.processOrder(orderId);
 	    logger.info("Order will be successfully processed with orderId {}", orderId);
@@ -102,6 +115,8 @@ public class OrderController {
 	}
 	
 	@GetMapping("/{id}")
+    @PreAuthorize("@orderSecurity.hasAccessToOrder(#orderId, authentication)")
+
 	public ResponseEntity<Order> getOrderById(@PathVariable("id") Long orderId) {
 	    Order order = orderService.getOrderById(orderId);
 	    logger.info("Successfully retrieved order with ID {}", orderId);
