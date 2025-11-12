@@ -7,6 +7,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -78,4 +81,31 @@ public class GlobalExceptionHandler {
         );
         return new ResponseEntity<>(error, status);
     }
+    
+    // 6️⃣ Access Denied (403 Forbidden)
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
+            AccessDeniedException ex, WebRequest request) {
+
+        return buildErrorResponse(
+                "Access Denied",
+                "You are not authorized to access this resource. Only the account owner or admin can view these details.",
+                HttpStatus.FORBIDDEN,
+                request
+        );
+    }
+
+    // 7️⃣ Authentication Issues (401 Unauthorized)
+    @ExceptionHandler({ AuthenticationException.class, BadCredentialsException.class })
+    public ResponseEntity<ErrorResponse> handleAuthErrors(
+            Exception ex, WebRequest request) {
+
+        return buildErrorResponse(
+                "Unauthorized",
+                "Authentication failed. Please check your credentials or token.",
+                HttpStatus.UNAUTHORIZED,
+                request
+        );
+    }
+
 }
