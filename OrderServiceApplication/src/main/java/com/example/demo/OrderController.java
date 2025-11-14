@@ -1,13 +1,14 @@
 package com.example.demo;
 
 import java.util.List;
-import java.util.Optional;
+
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,7 +16,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.excpetions.InValidOrderException;
@@ -23,6 +23,7 @@ import com.example.demo.excpetions.OrderAlreadyExistsException;
 import com.example.demo.excpetions.OrderNotFoundException;
 import com.example.demo.excpetions.OrderProcessingException;
 import com.example.demo.excpetions.UnauthorizedOrderAccessException;
+import com.example.demo.security.UserPrincipal;
 
 import jakarta.validation.Valid;
 
@@ -39,16 +40,24 @@ public class OrderController {
 	}
 
 	@PostMapping()
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+	@PreAuthorize("hasAnyRole('USER','ADMIN')")
+	public ResponseEntity<Order> placeOrder(@RequestBody @Valid Order order)throws InValidOrderException, OrderAlreadyExistsException {
 
-	public ResponseEntity<Order> placeOrder(@RequestBody @Valid Order order)
-			throws InValidOrderException, OrderAlreadyExistsException {
-		Order createdOrder = orderService.placeOrder(order);
-		logger.info("✅ Order created successfully! ID: {}, Product: {}, CustomerID: {}", 
-	             order.getId(), order.getProductName(), order.getCustomerId());
-		return new ResponseEntity<>(createdOrder, HttpStatus.CREATED);
+	    // ✔ Get logged-in user from JWT token
+	    UserPrincipal principal = (UserPrincipal) SecurityContextHolder
+	            .getContext().getAuthentication().getPrincipal();
+
+	    Long userIdFromToken = principal.getId();
+	    String username = principal.getUsername();
+
+	    // ❗ VERY IMPORTANT: override customer-related fields
+	    order.setCustomerId(userIdFromToken);
+	    order.setUserName(username);
+
+	    Order createdOrder = orderService.placeOrder(order);
+
+	    return new ResponseEntity<>(createdOrder, HttpStatus.CREATED);
 	}
-
 
 	@GetMapping("/customer/{customerId}")
 	@PreAuthorize("#customerId == authentication.principal.id or hasRole('ADMIN')")
@@ -117,7 +126,7 @@ public class OrderController {
 	@GetMapping("/{id}")
     @PreAuthorize("@orderSecurity.hasAccessToOrder(#orderId, authentication)")
 
-	public ResponseEntity<Order> getOrderById(@PathVariable("id") Long orderId) {
+	public ResponseEntity<Order> getOrderById(@PathVariable("id") Long orderId)throws UnauthorizedOrderAccessException {
 	    Order order = orderService.getOrderById(orderId);
 	    logger.info("Successfully retrieved order with ID {}", orderId);
 	    return ResponseEntity.ok(order);
