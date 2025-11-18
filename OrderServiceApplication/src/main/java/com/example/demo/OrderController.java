@@ -47,11 +47,12 @@ public class OrderController {
 	    UserPrincipal principal = (UserPrincipal) SecurityContextHolder
 	            .getContext().getAuthentication().getPrincipal();
 
-	    Long userIdFromToken = principal.getId();
+	    Long tokenUserId = Long.valueOf(SecurityContextHolder.getContext()
+	            .getAuthentication().getName());
 	    String username = principal.getUsername();
 
 	    // ❗ VERY IMPORTANT: override customer-related fields
-	    order.setCustomerId(userIdFromToken);
+	    order.setCustomerId(tokenUserId);
 	    order.setUserName(username);
 
 	    Order createdOrder = orderService.placeOrder(order);
@@ -100,9 +101,9 @@ public class OrderController {
 	@DeleteMapping("/{id}")
     @PreAuthorize("@orderSecurity.hasAccessToOrder(#orderId, authentication)")
 
-	public ResponseEntity<Void> deleteOrder(@PathVariable("id") Long orderId) throws OrderNotFoundException {
-	    orderService.deleteOrder(orderId);
-	    logger.info("Order with ID {} deleted successfully", orderId);
+	public ResponseEntity<Void> deleteOrder(@PathVariable("id") Long id) throws OrderNotFoundException {
+	    orderService.deleteOrder(id);
+	    logger.info("Order with ID {} deleted successfully", id);
 	    return ResponseEntity.noContent().build();
 	}
 	
@@ -117,18 +118,18 @@ public class OrderController {
 	@PutMapping("/{orderId}/process") // ✅ Change "id" to "orderId"
     @PreAuthorize("hasRole('ADMIN')")
 
-	public ResponseEntity<List<Order>> processOrder(@PathVariable("orderId") Long orderId) throws OrderProcessingException {
-	    List<Order> orderProcess = orderService.processOrder(orderId);
-	    logger.info("Order will be successfully processed with orderId {}", orderId);
+	public ResponseEntity<List<Order>> processOrder(@PathVariable("id") Long id) throws OrderProcessingException {
+	    List<Order> orderProcess = orderService.processOrder(id);
+	    logger.info("Order will be successfully processed with orderId {}", id);
 	    return ResponseEntity.ok(orderProcess);
 	}
 	
 	@GetMapping("/{id}")
-    @PreAuthorize("@orderSecurity.hasAccessToOrder(#orderId, authentication)")
+    @PreAuthorize("@orderSecurity.hasAccessToOrder(#id, authentication)")
 
-	public ResponseEntity<Order> getOrderById(@PathVariable("id") Long orderId)throws UnauthorizedOrderAccessException {
-	    Order order = orderService.getOrderById(orderId);
-	    logger.info("Successfully retrieved order with ID {}", orderId);
+	public ResponseEntity<Order> getOrderById(@PathVariable("id") Long id)throws UnauthorizedOrderAccessException {
+	    Order order = orderService.getOrderById(id);
+	    logger.info("Successfully retrieved order with ID {}", id);
 	    return ResponseEntity.ok(order);
 	}
 }

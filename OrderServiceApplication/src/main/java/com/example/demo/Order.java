@@ -2,23 +2,13 @@ package com.example.demo;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import lombok.*;
 
 @Entity
 @Table(name = "orders")
@@ -29,33 +19,69 @@ import lombok.ToString;
 @ToString
 public class Order  {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
-	
-	@Column(nullable = false)
-	private Long customerId;
-	private String userName;
-	private Long productId;
-	private String productName;
-	private String description;
-	private int quantity;
-	private BigDecimal price;
-	private String orderType;
-	private String orderReference;
-	private PaymentMethod paymentMethod;
-	private PaymentStatus paymentStatus;
-	private String email;
-	private String address;
-	private String mobileNumber;
-	@Enumerated(EnumType.STRING)
-	private OrderStatus orderStatus;
-	@CreationTimestamp
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // ✔ Set by JWT, still need @NotNull to enforce after @Valid
+    @NotNull(message = "Customer ID cannot be null")
+    @Column(nullable = false)
+    private Long customerId;
+
+    private String userName;
+
+    // ✔ REQUIRED
+    @NotNull(message = "Product ID is required")
+    private Long productId;
+
+    private String productName;
+
+    private String description;
+
+    // ✔ VALIDATE quantity > 0
+    @Min(value = 1, message = "Quantity must be at least 1")
+    private int quantity;
+
+    // ✔ VALIDATE price
+    @NotNull(message = "Price is required")
+    @DecimalMin(value = "1.0", message = "Price must be greater than 0")
+    private BigDecimal price;
+
+    // ✔ MUST NOT BE BLANK
+    @NotBlank(message = "Order type is required")
+    private String orderType;
+
+    private String orderReference;
+
+    // ✔ ENUM VALIDATION
+    @NotNull(message = "Payment method is required")
+    @Enumerated(EnumType.STRING)
+    private PaymentMethod paymentMethod;
+
+    @Enumerated(EnumType.STRING)
+    private PaymentStatus paymentStatus;
+
+    // ✔ EMAIL VALIDATION
+    @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email format")
+    private String email;
+
+    @NotBlank(message = "Address is required")
+    private String address;
+
+    @NotBlank(message = "Mobile number is required")
+    @Pattern(regexp = "^[0-9]{10}$", message = "Mobile number must be 10 digits")
+    private String mobileNumber;
+
+    @Enumerated(EnumType.STRING)
+    private OrderStatus orderStatus;
+
+    @CreationTimestamp
     private LocalDateTime createdAt;
-	@UpdateTimestamp
+
+    @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-	
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
@@ -66,5 +92,4 @@ public class Order  {
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
-
 }

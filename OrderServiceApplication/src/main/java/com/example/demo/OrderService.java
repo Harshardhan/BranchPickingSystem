@@ -17,13 +17,13 @@ public interface OrderService {
 
 	public Order placeOrder(Order order)throws InValidOrderException, OrderAlreadyExistsException ;
 	
-	public List<Order> processOrder(Long orderId)throws OrderProcessingException;
+	public List<Order> processOrder(Long id)throws OrderProcessingException;
 	
-	public Order updateOrder(Long orderId, Order updatedOrder)throws OrderNotFoundException;
+	public Order updateOrder(Long id, Order updatedOrder)throws OrderNotFoundException;
 	
-	public void deleteOrder(Long orderId)throws OrderNotFoundException;
+	public void deleteOrder(Long id)throws OrderNotFoundException;
 	
-	public Order getOrderById(Long orderId)throws UnauthorizedOrderAccessException;
+	public Order getOrderById(Long id)throws UnauthorizedOrderAccessException;
 	
 	public Order findByOrderReference(String orderReference)throws OrderNotFoundException;
 	

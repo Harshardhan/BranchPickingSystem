@@ -46,6 +46,7 @@ public class OrderServiceImpl implements OrderService {
             order.getPrice() == null || order.getQuantity() <= 0) {
             throw new InValidOrderException("Invalid order details.");
         }
+        
 
         order.setOrderReference(UUID.randomUUID().toString());
 
@@ -149,10 +150,10 @@ public class OrderServiceImpl implements OrderService {
 	}
 
 	@Override
-	public Order updateOrder(Long orderId, Order updatedOrder) throws OrderNotFoundException {
+	public Order updateOrder(Long id, Order updatedOrder) throws OrderNotFoundException {
 		// Step 1: Fetch the existing order
-		Order existingOrder = orderRepository.findById(orderId)
-				.orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderId));
+		Order existingOrder = orderRepository.findById(id)
+				.orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + id));
 
 		// Step 2: Update only non-null fields
 		if (updatedOrder.getDescription() != null) {
@@ -181,26 +182,26 @@ public class OrderServiceImpl implements OrderService {
 		Order savedOrder = orderRepository.save(existingOrder);
 
 		// Logging
-		logger.info("Order with ID {} updated successfully", orderId);
+		logger.info("Order with ID {} updated successfully", id);
 
 		return savedOrder;
 	}
 
 	@Override
-	public void deleteOrder(Long orderId) throws OrderNotFoundException {
-		Optional<Order> order = orderRepository.findById(orderId);
+	public void deleteOrder(Long id) throws OrderNotFoundException {
+		Optional<Order> order = orderRepository.findById(id);
 		if (order.isEmpty()) {
-			logger.error("Attempted to delete non-existent order with id {}", orderId);
-			throw new OrderNotFoundException("Order with id " + orderId + " not found.");
+			logger.error("Attempted to delete non-existent order with id {}", id);
+			throw new OrderNotFoundException("Order with id " + id + " not found.");
 		}
 
-		orderRepository.deleteById(orderId);
+		orderRepository.deleteById(id);
 		logger.info("Successfully deleted order: {}", order.get());
 	}
 
 	@Override
-	public Order getOrderById(Long orderId) throws UnauthorizedOrderAccessException {
-	    logger.info("Fetching order with ID {}", orderId);
+	public Order getOrderById(Long id) throws UnauthorizedOrderAccessException {
+	    logger.info("Fetching order with ID {}", id);
 
 	    Long authenticatedUserId = JwtUtils.getAuthenticatedUserId();
 	    Long userRole = JwtUtils.getAuthenticatedUserId();
@@ -210,17 +211,17 @@ public class OrderServiceImpl implements OrderService {
 	    }
 
 	    // ✅ Step 1: Fetch the order
-	    Order order = orderRepository.findById(orderId)
-	            .orElseThrow(() -> new OrderNotFoundException("Order not found with ID " + orderId));
+	    Order order = orderRepository.findById(id)
+	            .orElseThrow(() -> new OrderNotFoundException("Order not found with ID " + id));
 
 	    // ✅ Step 2: Authorization check
 	    if (!authenticatedUserId.equals(order.getCustomerId())) {
 	        logger.warn("User {} tried to access order {} belonging to customer {}",
-	                authenticatedUserId, orderId, order.getCustomerId());
+	                authenticatedUserId, id, order.getCustomerId());
 	        throw new UnauthorizedOrderAccessException("You are not authorized to view this order.");
 	    }
 
-	    logger.info("✅ Order {} retrieved successfully for user {}", orderId, authenticatedUserId);
+	    logger.info("✅ Order {} retrieved successfully for user {}", id, authenticatedUserId);
 	    return order;
 	}
 
