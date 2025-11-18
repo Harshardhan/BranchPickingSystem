@@ -41,17 +41,21 @@ public class OrderController {
 
 	@PostMapping()
 	@PreAuthorize("hasAnyRole('USER','ADMIN')")
-	public ResponseEntity<Order> placeOrder(@RequestBody @Valid Order order)throws InValidOrderException, OrderAlreadyExistsException {
+	public ResponseEntity<Order> placeOrder(@RequestBody @Valid Order order)
+	        throws InValidOrderException, OrderAlreadyExistsException {
 
-	    // ✔ Get logged-in user from JWT token
+		
+	    // Extract logged-in user from JWT
 	    UserPrincipal principal = (UserPrincipal) SecurityContextHolder
 	            .getContext().getAuthentication().getPrincipal();
 
-	    Long tokenUserId = Long.valueOf(SecurityContextHolder.getContext()
-	            .getAuthentication().getName());
+	    Long tokenUserId = principal.getId();   // ✔ Correct userId
 	    String username = principal.getUsername();
+	    if (!order.getCustomerId().equals(tokenUserId)) {
+	        throw new InValidOrderException("CustomerId mismatch between token and JSON");
+	    }
 
-	    // ❗ VERY IMPORTANT: override customer-related fields
+	    // Always override user fields to prevent JSON manipulation
 	    order.setCustomerId(tokenUserId);
 	    order.setUserName(username);
 
@@ -59,7 +63,6 @@ public class OrderController {
 
 	    return new ResponseEntity<>(createdOrder, HttpStatus.CREATED);
 	}
-
 	@GetMapping("/customer/{customerId}")
 	@PreAuthorize("#customerId == authentication.principal.id or hasRole('ADMIN')")
 	public ResponseEntity<List<Order>> findByCustomerId(@PathVariable Long customerId)throws OrderNotFoundException{
