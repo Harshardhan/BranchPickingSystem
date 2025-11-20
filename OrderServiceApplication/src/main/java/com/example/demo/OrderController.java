@@ -50,8 +50,8 @@ public class OrderController {
 
 	    Long tokenUserId = principal.getId();
 
-	    if (!tokenUserId.equals(order.getCustomerId())) {
-	        throw new IdentityMismatchException("Token user does not match requested user.");
+	    if (order.getCustomerId() != null) {
+	        throw new IdentityMismatchException("Customer ID must not be provided in the request. It is assigned automatically.");
 	    }
 	    String username = principal.getUsername();
 
