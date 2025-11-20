@@ -26,7 +26,6 @@ public class Order {
 	private Long id;
 
 	// ✔ Set by JWT, still need @NotNull to enforce after @Valid
-	@NotNull(message = "Customer ID cannot be null")
 	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
 
 	@Column(nullable = false)
