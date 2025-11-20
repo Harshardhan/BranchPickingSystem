@@ -1,11 +1,6 @@
 package com.example.demo;
 
 import java.util.List;
-
-import java.util.Optional;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import com.example.demo.excpetions.InValidOrderException;
 import com.example.demo.excpetions.OrderAlreadyExistsException;
 import com.example.demo.excpetions.OrderNotFoundException;

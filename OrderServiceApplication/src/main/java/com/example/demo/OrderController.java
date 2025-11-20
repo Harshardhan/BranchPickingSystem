@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.demo.excpetions.IdentityMismatchException;
 import com.example.demo.excpetions.InValidOrderException;
 import com.example.demo.excpetions.OrderAlreadyExistsException;
 import com.example.demo.excpetions.OrderNotFoundException;
@@ -44,23 +45,21 @@ public class OrderController {
 	public ResponseEntity<Order> placeOrder(@RequestBody @Valid Order order)
 	        throws InValidOrderException, OrderAlreadyExistsException {
 
-		
-	    // Extract logged-in user from JWT
 	    UserPrincipal principal = (UserPrincipal) SecurityContextHolder
 	            .getContext().getAuthentication().getPrincipal();
 
-	    Long tokenUserId = principal.getId();   // ✔ Correct userId
-	    String username = principal.getUsername();
-	    if (!order.getCustomerId().equals(tokenUserId)) {
-	        throw new InValidOrderException("CustomerId mismatch between token and JSON");
-	    }
+	    Long tokenUserId = principal.getId();
 
-	    // Always override user fields to prevent JSON manipulation
+	    if (!tokenUserId.equals(order.getCustomerId())) {
+	        throw new IdentityMismatchException("Token user does not match requested user.");
+	    }
+	    String username = principal.getUsername();
+
+	    // Always set customer identity from token
 	    order.setCustomerId(tokenUserId);
 	    order.setUserName(username);
 
 	    Order createdOrder = orderService.placeOrder(order);
-
 	    return new ResponseEntity<>(createdOrder, HttpStatus.CREATED);
 	}
 	@GetMapping("/customer/{customerId}")
@@ -77,7 +76,7 @@ public class OrderController {
 	}
 
 
-	@GetMapping()
+	@GetMapping("/all")
     @PreAuthorize("hasRole('ADMIN')")
 
 	public ResponseEntity<List<Order>> getAllOrders() {

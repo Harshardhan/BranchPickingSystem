@@ -88,9 +88,27 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAccessDenied(
             AccessDeniedException ex, WebRequest request) {
 
+        String message = "You are not authorized to perform this action. " +
+                         "Please use your own account credentials or contact your administrator.";
+
         return buildErrorResponse(
                 "Access Denied",
-                "You are not authorized to access this resource. Only the account owner or admin can view these details.",
+                message,
+                HttpStatus.FORBIDDEN,
+                request
+        );
+    }
+
+    @ExceptionHandler(IdentityMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleIdentityMismatch(
+            IdentityMismatchException ex, WebRequest request) {
+
+        String message = "Invalid account operation detected. " +
+                         "Please use your own account credentials.";
+
+        return buildErrorResponse(
+                "Identity Mismatch",
+                message,
                 HttpStatus.FORBIDDEN,
                 request
         );

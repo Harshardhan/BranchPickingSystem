@@ -6,6 +6,8 @@ import java.time.LocalDateTime;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -17,79 +19,83 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @ToString
-public class Order  {
+public class Order {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    // ✔ Set by JWT, still need @NotNull to enforce after @Valid
-    @NotNull(message = "Customer ID cannot be null")
-    @Column(nullable = false)
-    private Long customerId;
+	// ✔ Set by JWT, still need @NotNull to enforce after @Valid
+	@NotNull(message = "Customer ID cannot be null")
+	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
 
-    private String userName;
+	@Column(nullable = false)
+	private Long customerId;
 
-    // ✔ REQUIRED
-    @NotNull(message = "Product ID is required")
-    private Long productId;
+	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
 
-    private String productName;
+	private String userName;
 
-    private String description;
+	// ✔ REQUIRED
+	@NotNull(message = "Product ID is required")
+	private Long productId;
 
-    // ✔ VALIDATE quantity > 0
-    @Min(value = 1, message = "Quantity must be at least 1")
-    private int quantity;
+	private String productName;
 
-    // ✔ VALIDATE price
-    @NotNull(message = "Price is required")
-    @DecimalMin(value = "1.0", message = "Price must be greater than 0")
-    private BigDecimal price;
+	private String description;
 
-    // ✔ MUST NOT BE BLANK
-    @NotBlank(message = "Order type is required")
-    private String orderType;
+	// ✔ VALIDATE quantity > 0
+	@Min(value = 1, message = "Quantity must be at least 1")
+	private int quantity;
 
-    private String orderReference;
+	// ✔ VALIDATE price
+	@NotNull(message = "Price is required")
+	@DecimalMin(value = "1.0", message = "Price must be greater than 0")
+	private BigDecimal price;
 
-    // ✔ ENUM VALIDATION
-    @NotNull(message = "Payment method is required")
-    @Enumerated(EnumType.STRING)
-    private PaymentMethod paymentMethod;
+	// ✔ MUST NOT BE BLANK
+	@NotBlank(message = "Order type is required")
+	private String orderType;
 
-    @Enumerated(EnumType.STRING)
-    private PaymentStatus paymentStatus;
+	private String orderReference;
 
-    // ✔ EMAIL VALIDATION
-    @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
-    private String email;
+	// ✔ ENUM VALIDATION
+	@NotNull(message = "Payment method is required")
+	@Enumerated(EnumType.STRING)
+	private PaymentMethod paymentMethod;
 
-    @NotBlank(message = "Address is required")
-    private String address;
+	@Enumerated(EnumType.STRING)
+	private PaymentStatus paymentStatus;
 
-    @NotBlank(message = "Mobile number is required")
-    @Pattern(regexp = "^[0-9]{10}$", message = "Mobile number must be 10 digits")
-    private String mobileNumber;
+	// ✔ EMAIL VALIDATION
+	@NotBlank(message = "Email is required")
+	@Email(message = "Invalid email format")
+	private String email;
 
-    @Enumerated(EnumType.STRING)
-    private OrderStatus orderStatus;
+	@NotBlank(message = "Address is required")
+	private String address;
 
-    @CreationTimestamp
-    private LocalDateTime createdAt;
+	@NotBlank(message = "Mobile number is required")
+	@Pattern(regexp = "^[0-9]{10}$", message = "Mobile number must be 10 digits")
+	private String mobileNumber;
 
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
+	@Enumerated(EnumType.STRING)
+	private OrderStatus orderStatus;
 
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
+	@CreationTimestamp
+	private LocalDateTime createdAt;
 
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
+	@UpdateTimestamp
+	private LocalDateTime updatedAt;
+
+	@PrePersist
+	protected void onCreate() {
+		this.createdAt = LocalDateTime.now();
+		this.updatedAt = LocalDateTime.now();
+	}
+
+	@PreUpdate
+	protected void onUpdate() {
+		this.updatedAt = LocalDateTime.now();
+	}
 }
