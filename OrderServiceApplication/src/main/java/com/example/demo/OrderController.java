@@ -1,10 +1,10 @@
 package com.example.demo;
 
 import java.net.URI;
+import com.example.demo.security.*;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties.Jwt;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,8 +26,6 @@ import com.example.demo.excpetions.OrderAlreadyExistsException;
 import com.example.demo.excpetions.OrderNotFoundException;
 import com.example.demo.excpetions.OrderProcessingException;
 import com.example.demo.excpetions.UnauthorizedOrderAccessException;
-import com.example.demo.security.JwtUtils;
-
 import jakarta.validation.Valid;
 
 @RestController
@@ -43,39 +41,44 @@ public class OrderController {
 	}
 
 	@PostMapping
-	@PreAuthorize("hasRole('USER')") // Only users can place orders
+	@PreAuthorize("hasRole('USER')")
 	public ResponseEntity<Order> placeOrder(@RequestBody @Valid Order order)
 	        throws InValidOrderException, OrderAlreadyExistsException {
 
-	    Long tokenUserId = JwtUtils.getAuthenticatedUserId();
-	    String username = JwtUtils.getAuthenticatedUsername();
-	    boolean isAdmin = JwtUtils.hasRole("ADMIN");
+	    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+	    UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
 
-	    // Reject any identity spoofing
+	    Long tokenUserId = principal.getId();
+	    String username = principal.getUsername();
+
+	    // ❌ Prevent spoofing before setting values
 	    if (order.getCustomerId() != null || order.getUserName() != null) {
-	        throw new IdentityMismatchException("Identity fields must not be included. Assigned automatically.");
+	        throw new IdentityMismatchException(
+	                "Do not include identity fields (customerId, userName) in request.");
 	    }
 
-	    // Prevent admin placing customer orders
+	    // ❌ Admin should NOT place orders as customer
+	    boolean isAdmin = auth.getAuthorities()
+	            .stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
 	    if (isAdmin) {
-	        throw new IdentityMismatchException("Admins cannot place customer orders.");
+	        throw new IdentityMismatchException(
+	                "Admins are not allowed to place customer orders.");
 	    }
 
-	    // Basic sanity validations
+	    // Validate request details
 	    if (order.getProductId() == null || order.getQuantity() <= 0) {
 	        throw new InValidOrderException("Product and quantity must be valid.");
 	    }
 
-	    // Set identity from JWT
+	    // ✅ Set identity safely from JWT
 	    order.setCustomerId(tokenUserId);
 	    order.setUserName(username);
 
 	    Order createdOrder = orderService.placeOrder(order);
 
 	    URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-	            .path("/{id}")
-	            .buildAndExpand(createdOrder.getId())
-	            .toUri();
+	            .path("/{id}").buildAndExpand(createdOrder.getId()).toUri();
 
 	    return ResponseEntity.created(location).body(createdOrder);
 	}
