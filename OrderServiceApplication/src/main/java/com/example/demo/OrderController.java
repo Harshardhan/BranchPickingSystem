@@ -1,13 +1,14 @@
 package com.example.demo;
 
+import java.net.URI;
 import java.util.List;
-
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties.Jwt;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.example.demo.excpetions.IdentityMismatchException;
 import com.example.demo.excpetions.InValidOrderException;
@@ -24,7 +26,7 @@ import com.example.demo.excpetions.OrderAlreadyExistsException;
 import com.example.demo.excpetions.OrderNotFoundException;
 import com.example.demo.excpetions.OrderProcessingException;
 import com.example.demo.excpetions.UnauthorizedOrderAccessException;
-import com.example.demo.security.UserPrincipal;
+import com.example.demo.security.JwtUtils;
 
 import jakarta.validation.Valid;
 
@@ -40,27 +42,42 @@ public class OrderController {
 		this.orderService = orderService;
 	}
 
-	@PostMapping()
-	@PreAuthorize("hasAnyRole('USER','ADMIN')")
+	@PostMapping
+	@PreAuthorize("hasRole('USER')") // Only users can place orders
 	public ResponseEntity<Order> placeOrder(@RequestBody @Valid Order order)
 	        throws InValidOrderException, OrderAlreadyExistsException {
 
-	    UserPrincipal principal = (UserPrincipal) SecurityContextHolder
-	            .getContext().getAuthentication().getPrincipal();
+	    Long tokenUserId = JwtUtils.getAuthenticatedUserId();
+	    String username = JwtUtils.getAuthenticatedUsername();
+	    boolean isAdmin = JwtUtils.hasRole("ADMIN");
 
-	    Long tokenUserId = principal.getId();
-
-	    if (order.getCustomerId() != null) {
-	        throw new IdentityMismatchException("Customer ID must not be provided in the request. It is assigned automatically.");
+	    // Reject any identity spoofing
+	    if (order.getCustomerId() != null || order.getUserName() != null) {
+	        throw new IdentityMismatchException("Identity fields must not be included. Assigned automatically.");
 	    }
-	    String username = principal.getUsername();
 
-	    // Always set customer identity from token
+	    // Prevent admin placing customer orders
+	    if (isAdmin) {
+	        throw new IdentityMismatchException("Admins cannot place customer orders.");
+	    }
+
+	    // Basic sanity validations
+	    if (order.getProductId() == null || order.getQuantity() <= 0) {
+	        throw new InValidOrderException("Product and quantity must be valid.");
+	    }
+
+	    // Set identity from JWT
 	    order.setCustomerId(tokenUserId);
 	    order.setUserName(username);
 
 	    Order createdOrder = orderService.placeOrder(order);
-	    return new ResponseEntity<>(createdOrder, HttpStatus.CREATED);
+
+	    URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+	            .path("/{id}")
+	            .buildAndExpand(createdOrder.getId())
+	            .toUri();
+
+	    return ResponseEntity.created(location).body(createdOrder);
 	}
 	@GetMapping("/customer/{customerId}")
 	@PreAuthorize("#customerId == authentication.principal.id or hasRole('ADMIN')")
@@ -100,15 +117,23 @@ public class OrderController {
 	    return ResponseEntity.ok(updated);
 	}
 	
-	@DeleteMapping("/{id}")
-    @PreAuthorize("@orderSecurity.hasAccessToOrder(#orderId, authentication)")
+	// processOrder
+	@PutMapping("/{orderId}/process")
+	@PreAuthorize("hasRole('ADMIN')")
+	public ResponseEntity<List<Order>> processOrder(@PathVariable("orderId") Long orderId) throws OrderProcessingException {
+	    List<Order> orderProcess = orderService.processOrder(orderId);
+	    logger.info("Order will be successfully processed with orderId {}", orderId);
+	    return ResponseEntity.ok(orderProcess);
+	}
 
-	public ResponseEntity<Void> deleteOrder(@PathVariable("id") Long id) throws OrderNotFoundException {
-	    orderService.deleteOrder(id);
-	    logger.info("Order with ID {} deleted successfully", id);
+	// deleteOrder: use orderId variable everywhere
+	@DeleteMapping("/{orderId}")
+	@PreAuthorize("@orderSecurity.hasAccessToOrder(#orderId, authentication)")
+	public ResponseEntity<Void> deleteOrder(@PathVariable("orderId") Long orderId) throws OrderNotFoundException {
+	    orderService.deleteOrder(orderId);
+	    logger.info("Order with ID {} deleted successfully", orderId);
 	    return ResponseEntity.noContent().build();
 	}
-	
 	@GetMapping("/reference/{orderReference}")
     @PreAuthorize("@orderSecurity.hasAccessToOrderReference(#orderReference, authentication)")
 
@@ -117,15 +142,6 @@ public class OrderController {
 	    logger.info("Successfully retrieved details of an order with orderReference {}", orderReference);
 	    return ResponseEntity.ok(referenceOrder);
 	}
-	@PutMapping("/{orderId}/process") // ✅ Change "id" to "orderId"
-    @PreAuthorize("hasRole('ADMIN')")
-
-	public ResponseEntity<List<Order>> processOrder(@PathVariable("id") Long id) throws OrderProcessingException {
-	    List<Order> orderProcess = orderService.processOrder(id);
-	    logger.info("Order will be successfully processed with orderId {}", id);
-	    return ResponseEntity.ok(orderProcess);
-	}
-	
 	@GetMapping("/{id}")
     @PreAuthorize("@orderSecurity.hasAccessToOrder(#id, authentication)")
 

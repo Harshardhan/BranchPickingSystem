@@ -42,11 +42,9 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public Order placeOrder(Order order) throws InValidOrderException, OrderAlreadyExistsException {
         // 1. Validation
-        if (order == null || order.getCustomerId() == null || 
-            order.getPrice() == null || order.getQuantity() <= 0) {
-            throw new InValidOrderException("Invalid order details.");
-        }
-        
+    	if (order == null || order.getPrice() == null || order.getQuantity() <= 0) {
+    	    throw new InValidOrderException("Invalid order details.");
+    	}
 
         order.setOrderReference(UUID.randomUUID().toString());
 
@@ -204,20 +202,18 @@ public class OrderServiceImpl implements OrderService {
 	    logger.info("Fetching order with ID {}", id);
 
 	    Long authenticatedUserId = JwtUtils.getAuthenticatedUserId();
-	    Long userRole = JwtUtils.getAuthenticatedUserId();
+	    String authenticatedUserRole = JwtUtils.getAuthenticatedUserRole(); // implement this
 
 	    if (authenticatedUserId == null) {
 	        throw new UnauthorizedOrderAccessException("User not authenticated or token invalid.");
 	    }
 
-	    // ✅ Step 1: Fetch the order
 	    Order order = orderRepository.findById(id)
 	            .orElseThrow(() -> new OrderNotFoundException("Order not found with ID " + id));
 
-	    // ✅ Step 2: Authorization check
-	    if (!authenticatedUserId.equals(order.getCustomerId())) {
-	        logger.warn("User {} tried to access order {} belonging to customer {}",
-	                authenticatedUserId, id, order.getCustomerId());
+	    // Authorization check: allow owner or admin role
+	    if (!authenticatedUserId.equals(order.getCustomerId()) && !"ROLE_ADMIN".equals(authenticatedUserRole)) {
+	        logger.warn("User {} tried to access order {} belonging to customer {}", authenticatedUserId, id, order.getCustomerId());
 	        throw new UnauthorizedOrderAccessException("You are not authorized to view this order.");
 	    }
 

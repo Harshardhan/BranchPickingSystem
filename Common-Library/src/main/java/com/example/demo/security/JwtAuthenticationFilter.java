@@ -59,7 +59,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             var authorities = jwtTokenProvider.getAuthoritiesFromClaims(claims);
 
          // Create a principal object with both id and username
-            UserPrincipal principal = new UserPrincipal(userId, username);
+            UserPrincipal principal = new UserPrincipal(userId, username, authorities);
 
             // Create authentication with correct parameters
             var authentication = new UsernamePasswordAuthenticationToken(
