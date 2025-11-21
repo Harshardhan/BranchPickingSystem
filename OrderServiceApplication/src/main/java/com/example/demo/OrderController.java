@@ -43,7 +43,7 @@ public class OrderController {
 	@PostMapping
 	@PreAuthorize("hasRole('USER')")
 	public ResponseEntity<Order> placeOrder(@RequestBody @Valid Order order)
-	        throws InValidOrderException, OrderAlreadyExistsException {
+	        throws InValidOrderException, OrderAlreadyExistsException, NumberFormatException {
 
 	    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 	    UserPrincipal principal = (UserPrincipal) auth.getPrincipal();

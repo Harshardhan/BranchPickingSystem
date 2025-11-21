@@ -56,6 +56,7 @@ public class Order {
 	@NotBlank(message = "Order type is required")
 	private String orderType;
 
+	@Column(unique = true)
 	private String orderReference;
 
 	// ✔ ENUM VALIDATION

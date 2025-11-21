@@ -22,122 +22,111 @@ import com.example.demo.security.JwtUtils;
 @Transactional
 public class OrderServiceImpl implements OrderService {
 
-    private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
+	private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
 
-    private final OrderRepository orderRepository;
-    private final OrderEventPublisher orderEventPublisher;
-    private final ProductClient productClient;
-    private final PaymentClient paymentClient; // Feign client
+	private final OrderRepository orderRepository;
+	private final OrderEventPublisher orderEventPublisher;
+	private final ProductClient productClient;
+	private final PaymentClient paymentClient; // Feign client
 
-    public OrderServiceImpl(OrderRepository orderRepository, 
-                            OrderEventPublisher orderEventPublisher,
-                            ProductClient productClient,
-                            PaymentClient paymentClient) {
-        this.orderRepository = orderRepository;
-        this.orderEventPublisher = orderEventPublisher;
-        this.productClient = productClient;
-        this.paymentClient = paymentClient;
-    }
+	public OrderServiceImpl(OrderRepository orderRepository, OrderEventPublisher orderEventPublisher,
+			ProductClient productClient, PaymentClient paymentClient) {
+		this.orderRepository = orderRepository;
+		this.orderEventPublisher = orderEventPublisher;
+		this.productClient = productClient;
+		this.paymentClient = paymentClient;
+	}
 
-    @Override
-    public Order placeOrder(Order order) throws InValidOrderException, OrderAlreadyExistsException {
-        // 1. Validation
-    	if (order == null || order.getPrice() == null || order.getQuantity() <= 0) {
-    	    throw new InValidOrderException("Invalid order details.");
-    	}
+	@Override
+	public Order placeOrder(Order order) throws InValidOrderException, OrderAlreadyExistsException, NumberFormatException {
+		// 1. Validation
+		if (order == null || order.getPrice() == null || order.getQuantity() <= 0) {
+			throw new InValidOrderException("Invalid order details.");
+		}
 
-        order.setOrderReference(UUID.randomUUID().toString());
+		if (orderRepository.findByOrderReferenceIgnoreCase(order.getOrderReference()).isPresent()) {
+			throw new OrderAlreadyExistsException("Order already exists.");
+		}
 
-        if (orderRepository.findByOrderReferenceIgnoreCase(order.getOrderReference()).isPresent()) {
-            throw new OrderAlreadyExistsException("Order already exists.");
-        }
+		// 2. Validate product
+		// After fetching the product
+		Product product = productClient.getProductById(order.getProductId());
 
-        // 2. Validate product
-     // After fetching the product
-        Product product = productClient.getProductById(order.getProductId());
+		if (product == null || product.getProductName() == null
+				|| product.getProductName().equalsIgnoreCase("Fallback Product")
+				|| product.getProductName().equalsIgnoreCase("Unknown") || product.getId() == null
+				|| !product.getId().equals(order.getProductId())) {
+			logger.error("❌ Invalid Product ID or fallback response received for ID: {}", order.getProductId());
 
-        if (product == null ||
-            product.getProductName() == null ||
-            product.getProductName().equalsIgnoreCase("Fallback Product") ||
-            product.getProductName().equalsIgnoreCase("Unknown") ||
-            product.getId() == null ||
-            !product.getId().equals(order.getProductId())) {
-            logger.error("❌ Invalid Product ID or fallback response received for ID: {}", order.getProductId());
+			throw new InValidOrderException("Invalid Product ID: " + order.getProductId());
+		}
+		order.setProductName(product.getProductName());
 
-            throw new InValidOrderException("Invalid Product ID: " + order.getProductId());
-        }
-     order.setProductName(product.getProductName());
+		// 3. Save order
+		order.setOrderReference(UUID.randomUUID().toString());
+		order.setOrderStatus(OrderStatus.PLACED);
+		Order savedOrder = orderRepository.save(order);
+		logger.info("✅ Order placed successfully: {}", savedOrder.getOrderReference());
 
-        // 3. Save order
-        order.setOrderStatus(OrderStatus.PLACED);
-        Order savedOrder = orderRepository.save(order);
-        logger.info("✅ Order placed successfully: {}", savedOrder.getOrderReference());
+		// 4. Call Payment Service via Feign
+		try {
+			Payment paymentReq = Payment.builder().userId(savedOrder.getCustomerId()).orderId(savedOrder.getId())
+					.username(savedOrder.getUserName()).method(savedOrder.getPaymentMethod())
+					.amount(savedOrder.getPrice()).currencyCode("INR").emailId(savedOrder.getEmail())
+					.mobileNumber(savedOrder.getMobileNumber()).status(PaymentStatus.SUCCESS)
+					.paymentTimestamp(LocalDateTime.now()).build();
 
-        // 4. Call Payment Service via Feign
-        try {
-            Payment paymentReq = Payment.builder()
-                    .userId(savedOrder.getCustomerId())
-                    .orderId(savedOrder.getId())
-                    .username(savedOrder.getUserName())
-                    .method(savedOrder.getPaymentMethod())
-                    .amount(savedOrder.getPrice())
-                    .currencyCode("INR")
-                    .emailId(savedOrder.getEmail())
-                    .mobileNumber(savedOrder.getMobileNumber())
-                    .status(PaymentStatus.SUCCESS)
-                    .paymentTimestamp(LocalDateTime.now())
-                    .build();
+			Payment paymentResponse = paymentClient.processPayment(paymentReq);
 
-            Payment paymentResponse = paymentClient.processPayment(paymentReq);
+			if (paymentResponse != null && paymentResponse.getStatus() == PaymentStatus.SUCCESS) {
+				logger.info("💰 Payment successful for order: {}", savedOrder.getOrderReference());
+			} else {
+				savedOrder.setOrderStatus(OrderStatus.PAYMENT_FAILED);
+				orderRepository.save(savedOrder);
+				logger.warn("❌ Payment failed for order: {}", savedOrder.getOrderReference());
+				return savedOrder;
+			}
+		} catch (Exception e) {
+			savedOrder.setOrderStatus(OrderStatus.PAYMENT_FAILED);
+			orderRepository.save(savedOrder);
+			logger.error("❌ Error calling Payment Service: {}", e.getMessage());
+			return savedOrder;
+		}
 
-            if (paymentResponse != null && paymentResponse.getStatus() == PaymentStatus.SUCCESS) {
-                logger.info("💰 Payment successful for order: {}", savedOrder.getOrderReference());
-            } else {
-                savedOrder.setOrderStatus(OrderStatus.PAYMENT_FAILED);
-                orderRepository.save(savedOrder);
-                logger.warn("❌ Payment failed for order: {}", savedOrder.getOrderReference());
-                return savedOrder;
-            }
-        } catch (Exception e) {
-            savedOrder.setOrderStatus(OrderStatus.PAYMENT_FAILED);
-            orderRepository.save(savedOrder);
-            logger.error("❌ Error calling Payment Service: {}", e.getMessage());
-            return savedOrder;
-        }
+		// 5. Publish Kafka event to Consolidation Service
+		try {
+			orderEventPublisher.publishOrder(savedOrder);
+			logger.info("📤 Kafka event published to Consolidation topic for order: {}",
+					savedOrder.getOrderReference());
+		} catch (Exception e) {
+			logger.error("❌ Failed to publish Consolidation event: {}", e.getMessage());
+		}
 
-        // 5. Publish Kafka event to Consolidation Service
-        try {
-            orderEventPublisher.publishOrder(savedOrder);
-            logger.info("📤 Kafka event published to Consolidation topic for order: {}", savedOrder.getOrderReference());
-        } catch (Exception e) {
-            logger.error("❌ Failed to publish Consolidation event: {}", e.getMessage());
-        }
+		// 6. Publish Kafka event to Notification Service
+		try {
+			NotificationRequest notification = new NotificationRequest();
+			notification.setCustomerId(savedOrder.getCustomerId());
+			notification.setOrderId(savedOrder.getId());
+			notification.setOrderReference(savedOrder.getOrderReference());
+			notification.setEmail(savedOrder.getEmail());
+			notification.setMessage("Order placed successfully!");
+			notification.setPrice(savedOrder.getPrice());
+			notification.setQuantity(savedOrder.getQuantity());
+			notification.setPaymentMethod(savedOrder.getPaymentMethod());
+			notification.setAddress(savedOrder.getAddress());
+			notification.setProductId(savedOrder.getProductId());
+			notification.setProductName(savedOrder.getProductName());
+			notification.setOrderType(savedOrder.getOrderType());
+			notification.setType(NotificationType.EMAIL);
 
-        // 6. Publish Kafka event to Notification Service
-        try {
-            NotificationRequest notification = new NotificationRequest();
-            notification.setCustomerId(savedOrder.getCustomerId());
-            notification.setOrderId(savedOrder.getId());
-            notification.setOrderReference(savedOrder.getOrderReference());
-            notification.setEmail(savedOrder.getEmail());
-            notification.setMessage("Order placed successfully!");
-            notification.setPrice(savedOrder.getPrice());
-            notification.setQuantity(savedOrder.getQuantity());
-            notification.setPaymentMethod(savedOrder.getPaymentMethod());
-            notification.setAddress(savedOrder.getAddress());
-            notification.setProductId(savedOrder.getProductId());
-            notification.setProductName(savedOrder.getProductName());
-            notification.setOrderType(savedOrder.getOrderType());
-            notification.setType(NotificationType.EMAIL);
+			orderEventPublisher.publishNotification(notification);
+			logger.info("📤 Kafka event published to Notification topic for order: {}", savedOrder.getOrderReference());
+		} catch (Exception e) {
+			logger.warn("❌ Failed to publish notification event: {}", e.getMessage());
+		}
 
-            orderEventPublisher.publishNotification(notification);
-            logger.info("📤 Kafka event published to Notification topic for order: {}", savedOrder.getOrderReference());
-        } catch (Exception e) {
-            logger.warn("❌ Failed to publish notification event: {}", e.getMessage());
-        }
-
-        return savedOrder;
-    }
+		return savedOrder;
+	}
 
 	// Other methods like updateOrder(), deleteOrder(), etc., remain the same
 
@@ -199,26 +188,27 @@ public class OrderServiceImpl implements OrderService {
 
 	@Override
 	public Order getOrderById(Long id) throws UnauthorizedOrderAccessException {
-	    logger.info("Fetching order with ID {}", id);
+		logger.info("Fetching order with ID {}", id);
 
-	    Long authenticatedUserId = JwtUtils.getAuthenticatedUserId();
-	    String authenticatedUserRole = JwtUtils.getAuthenticatedUserRole(); // implement this
+		Long authenticatedUserId = JwtUtils.getAuthenticatedUserId();
+		String authenticatedUserRole = JwtUtils.getAuthenticatedUserRole(); // implement this
 
-	    if (authenticatedUserId == null) {
-	        throw new UnauthorizedOrderAccessException("User not authenticated or token invalid.");
-	    }
+		if (authenticatedUserId == null) {
+			throw new UnauthorizedOrderAccessException("User not authenticated or token invalid.");
+		}
 
-	    Order order = orderRepository.findById(id)
-	            .orElseThrow(() -> new OrderNotFoundException("Order not found with ID " + id));
+		Order order = orderRepository.findById(id)
+				.orElseThrow(() -> new OrderNotFoundException("Order not found with ID " + id));
 
-	    // Authorization check: allow owner or admin role
-	    if (!authenticatedUserId.equals(order.getCustomerId()) && !"ROLE_ADMIN".equals(authenticatedUserRole)) {
-	        logger.warn("User {} tried to access order {} belonging to customer {}", authenticatedUserId, id, order.getCustomerId());
-	        throw new UnauthorizedOrderAccessException("You are not authorized to view this order.");
-	    }
+		// Authorization check: allow owner or admin role
+		if (!authenticatedUserId.equals(order.getCustomerId()) && !"ROLE_ADMIN".equals(authenticatedUserRole)) {
+			logger.warn("User {} tried to access order {} belonging to customer {}", authenticatedUserId, id,
+					order.getCustomerId());
+			throw new UnauthorizedOrderAccessException("You are not authorized to view this order.");
+		}
 
-	    logger.info("✅ Order {} retrieved successfully for user {}", id, authenticatedUserId);
-	    return order;
+		logger.info("✅ Order {} retrieved successfully for user {}", id, authenticatedUserId);
+		return order;
 	}
 
 	@Override
