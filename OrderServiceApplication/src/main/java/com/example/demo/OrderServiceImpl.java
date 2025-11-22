@@ -21,6 +21,8 @@ import com.example.demo.security.JwtUtils;
 
 @Service
 @Transactional
+@Retry(name = "order-service")
+
 public class OrderServiceImpl implements OrderService {
 
 	private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);

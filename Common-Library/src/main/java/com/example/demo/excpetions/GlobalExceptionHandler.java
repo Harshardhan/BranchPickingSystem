@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
@@ -123,6 +124,20 @@ public class GlobalExceptionHandler {
                 "Unauthorized",
                 "Authentication failed. Please check your credentials or token.",
                 HttpStatus.UNAUTHORIZED,
+                request
+        );
+    }
+
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidJson(HttpMessageNotReadableException ex, WebRequest request) {
+
+        String message = "Invalid input format. Please provide valid number formats for fields like price and quantity.";
+
+        return buildErrorResponse(
+                "Invalid Request Payload",
+                message,
+                HttpStatus.BAD_REQUEST,
                 request
         );
     }
