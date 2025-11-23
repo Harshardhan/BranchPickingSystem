@@ -80,10 +80,22 @@ public class OrderServiceImpl implements OrderService {
 	    return product;
 	}
 	private void checkDuplicateOrder(Order order, Product product) {
-	    if (orderRepository.findByCustomerIdAndProductId(order.getCustomerId(), product.getId()).isPresent()) {
-	        throw new OrderAlreadyExistsException("Order already exists for this product");
+
+	    Optional<Order> lastOrder = orderRepository
+	            .findTopByCustomerIdAndProductIdOrderByOrderTimeDesc(order.getCustomerId(), product.getId());
+
+	    if (lastOrder.isPresent()) {
+	        LocalDateTime lastOrderTime = lastOrder.get().getCreatedAt();
+	        long minutesDiff = java.time.Duration
+	                .between(lastOrderTime, LocalDateTime.now())
+	                .toMinutes();
+
+	        if (minutesDiff < 10) {
+	            throw new OrderAlreadyExistsException(
+	                    "You can reorder this product only after 10 minutes");
+	        }
 	    }
-	    
+
 	    if (order.getPrice().compareTo(product.getPrice()) != 0) {
 	        throw new InValidOrderException("Price mismatch for product");
 	    }
