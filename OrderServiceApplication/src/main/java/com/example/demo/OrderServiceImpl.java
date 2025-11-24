@@ -82,7 +82,7 @@ public class OrderServiceImpl implements OrderService {
 	private void checkDuplicateOrder(Order order, Product product) {
 
 	    Optional<Order> lastOrder = orderRepository
-	            .findTopByCustomerIdAndProductIdOrderByOrderTimeDesc(order.getCustomerId(), product.getId());
+	            .findTopByCustomerIdAndProductIdOrderByCreatedAtDesc(order.getCustomerId(), product.getId());
 
 	    if (lastOrder.isPresent()) {
 	        LocalDateTime lastOrderTime = lastOrder.get().getCreatedAt();

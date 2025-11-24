@@ -36,6 +36,6 @@ public interface OrderRepository extends JpaRepository<Order, Long>{
     // ✅ Custom Query: Find by order reference (case-insensitive)
     Optional<Order> findByOrderReferenceIgnoreCase(String orderReference);
 
-    Optional<Order> findTopByCustomerIdAndProductIdOrderByOrderTimeDesc(
+    Optional<Order> findTopByCustomerIdAndProductIdOrderByCreatedAtDesc(
             Long customerId, Long productId);
 }
