@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-user-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-user
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-user
+  template:
+    metadata:
+      labels:
+        app: mysql-user
+    spec:
+      containers:
+        - name: mysql-user
+          image: mysql:8
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "master"
+            - name: MYSQL_DATABASE
+              value: "user_db"
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-user-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-user-storage
+          persistentVolumeClaim:
+            claimName: mysql-user-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-user
+spec:
+  selector:
+    app: mysql-user
+  ports:
+    - port: 3306
+      targetPort: 3306
+  type: ClusterIP

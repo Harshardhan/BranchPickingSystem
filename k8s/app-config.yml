@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  SPRING_PROFILES_ACTIVE: dev
+  LOGSTASH_HOST: logstash
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+  LOG_PATH: /app/logs
+  ORDER_DB: order_db
+  PRODUCT_DB: product_db
+  CONSOLIDATION_DB: consolidation_db
+  NOTIFICATION_DB: notification_db
+  USER_DB: user_db
+  PAYMENT_DB: payment_db
+  ANALYTICS_DB: analytics_db
+  SPRING_REDIS_HOST: redis
+  SPRING_REDIS_PORT: "6379"
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  KAFKA_TOPIC_NEW_PRODUCT: new-product-topic
+  SPRING_ZIPKIN_BASE_URL: http://zipkin:9411

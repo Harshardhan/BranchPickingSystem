@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-application
+spec:
+  type: ClusterIP
+  selector:
+    app: payment-application
+  ports:
+    - port: 8086
+      targetPort: 8086

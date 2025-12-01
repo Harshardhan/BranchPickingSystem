@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-notification-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-notification
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-notification
+  template:
+    metadata:
+      labels:
+        app: mysql-notification
+    spec:
+      containers:
+        - name: mysql-notification
+          image: mysql:8
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "master"
+            - name: MYSQL_DATABASE
+              value: "notification_db"
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-notification-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-notification-storage
+          persistentVolumeClaim:
+            claimName: mysql-notification-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-notification
+spec:
+  selector:
+    app: mysql-notification
+  ports:
+    - port: 3306
+      targetPort: 3306
+  type: ClusterIP

@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consolidation-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: consolidation-service
+  template:
+    metadata:
+      labels:
+        app: consolidation-service
+    spec:
+      containers:
+        - name: consolidation-service
+          image: harsha79/consolidation-service:latest
+          ports:
+            - containerPort: 8084
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secret

@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-analytics-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-analytics
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-analytics
+  template:
+    metadata:
+      labels:
+        app: mysql-analytics
+    spec:
+      containers:
+        - name: mysql-analytics
+          image: mysql:8
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "master"
+            - name: MYSQL_DATABASE
+              value: "analytics_db"
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-analytics-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-analytics-storage
+          persistentVolumeClaim:
+            claimName: mysql-analytics-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-analytics
+spec:
+  selector:
+    app: mysql-analytics
+  ports:
+    - port: 3306
+      targetPort: 3306
+  type: ClusterIP

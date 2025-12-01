@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-application
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: payment-application
+  template:
+    metadata:
+      labels:
+        app: payment-application
+    spec:
+      containers:
+        - name: payment-service
+          image: harsha79/payment-service:latest
+          ports:
+            - containerPort: 8086
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secret
+

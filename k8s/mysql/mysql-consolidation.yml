@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-consolidation-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-consolidation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-consolidation
+  template:
+    metadata:
+      labels:
+        app: mysql-consolidation
+    spec:
+      containers:
+        - name: mysql-consolidation
+          image: mysql:8
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "master"
+            - name: MYSQL_DATABASE
+              value: "consolidation_db"
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-consolidation-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-consolidation-storage
+          persistentVolumeClaim:
+            claimName: mysql-consolidation-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-consolidation
+spec:
+  selector:
+    app: mysql-consolidation
+  ports:
+    - port: 3306
+      targetPort: 3306
+  type: ClusterIP
