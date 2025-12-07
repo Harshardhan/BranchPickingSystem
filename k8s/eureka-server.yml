@@ -9,4 +9,4 @@ spec:
   ports:
     - port: 8761
       targetPort: 8761
-      nodePort: 30010   # any port between 30000–32767
+      nodePort: 30010
