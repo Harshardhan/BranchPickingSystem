@@ -1,25 +1,31 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: payment-application
+  name: payment-service
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: payment-application
+      app: payment-service
   template:
     metadata:
       labels:
-        app: payment-application
+        app: payment-service
     spec:
       containers:
         - name: payment-service
           image: harsha79/payment-service:latest
           ports:
             - containerPort: 8086
-          envFrom:
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          envFrom:          # ← moved OUTSIDE resources
             - configMapRef:
                 name: app-config
             - secretRef:
                 name: app-secret
-

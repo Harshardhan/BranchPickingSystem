@@ -1,25 +1,31 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: product-service-application
+  name: product-service
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: product-service-application
+      app: product-service
   template:
     metadata:
       labels:
-        app: product-service-application
+        app: product-service
     spec:
       containers:
         - name: product-service
           image: harsha79/product-service:latest
           ports:
             - containerPort: 8082
-          envFrom:
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          envFrom:          # ← moved OUTSIDE resources
             - configMapRef:
                 name: app-config
             - secretRef:
                 name: app-secret
-

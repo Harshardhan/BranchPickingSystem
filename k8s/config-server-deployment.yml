@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: config-server
 spec:
-  replicas: 2
+  replicas: 1   # reduce replicas from 2 → 1 (saves 500MB)
   selector:
     matchLabels:
       app: config-server
@@ -17,3 +17,10 @@ spec:
           image: harsha79/config-server:latest
           ports:
             - containerPort: 8888
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

@@ -1,24 +1,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: order-service-application
+  name: order-service
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: order-service-application
+      app: order-service
   template:
     metadata:
       labels:
-        app: order-service-application
+        app: order-service
     spec:
       containers:
         - name: order-service
           image: harsha79/order-service:latest
-          
           ports:
             - containerPort: 8081
-          envFrom:
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          envFrom:          # ← moved OUTSIDE resources
             - configMapRef:
                 name: app-config
             - secretRef:

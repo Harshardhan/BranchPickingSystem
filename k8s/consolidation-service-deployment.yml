@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: consolidation-service
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: consolidation-service
@@ -17,7 +17,14 @@ spec:
           image: harsha79/consolidation-service:latest
           ports:
             - containerPort: 8084
-          envFrom:
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          envFrom:          # ← moved OUTSIDE resources
             - configMapRef:
                 name: app-config
             - secretRef:

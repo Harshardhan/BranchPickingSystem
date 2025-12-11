@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: api-gateway
 spec:
-  replicas: 2
+  replicas: 1   # reduce replicas from 2 → 1 (saves 500MB)
   selector:
     matchLabels:
       app: api-gateway
@@ -13,7 +13,14 @@ spec:
         app: api-gateway
     spec:
       containers:
-        - name: api-gateway
+        - name: eureka-server
           image: harsha79/api-gateway:latest
           ports:
             - containerPort: 80
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
