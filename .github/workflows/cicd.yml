@@ -8,18 +8,20 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     steps:
-      # 1️⃣ Checkout repo with full history and credentials
+      # 1️⃣ Checkout repo with full history and all submodules
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: true
+          submodules: recursive
 
-      # 2️⃣ Debug: Check Git state
+      # 2️⃣ Debug: Verify Git and submodules
       - name: Debug Git
         run: |
           git status
           git branch -a
+          git submodule status
 
       # 3️⃣ Debug: List repo files
       - name: List repo files
@@ -54,18 +56,20 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      # 1️⃣ Checkout repo with full history and credentials
+      # 1️⃣ Checkout repo with full history and all submodules
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: true
+          submodules: recursive
 
-      # 2️⃣ Debug: Check Git state
+      # 2️⃣ Debug: Verify Git and submodules
       - name: Debug Git
         run: |
           git status
           git branch -a
+          git submodule status
 
       # 3️⃣ Setup kubectl
       - name: Setup kubectl
