@@ -8,21 +8,28 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     steps:
-      # 1️⃣ Checkout code with full history
+      # 1️⃣ Checkout repo with full history and credentials
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: true
 
-      # 2️⃣ Debug: List repo structure
+      # 2️⃣ Debug: Check Git state
+      - name: Debug Git
+        run: |
+          git status
+          git branch -a
+
+      # 3️⃣ Debug: List repo files
       - name: List repo files
         run: ls -R
 
-      # 3️⃣ Log in to GitHub Container Registry
+      # 4️⃣ Log in to GitHub Container Registry
       - name: Log in to GHCR
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
 
-      # 4️⃣ Build and push microservice images
+      # 5️⃣ Build and push all microservice images
       - name: Build and push images
         run: |
           SERVICES=("api-gateway" "config-server" "eureka-server" "product-service" "order-service" "payment-service" "user-registration" "analytics-service" "consolidation-service" "notification-service")
@@ -47,23 +54,30 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      # 1️⃣ Checkout code for deployment
+      # 1️⃣ Checkout repo with full history and credentials
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: true
 
-      # 2️⃣ Setup kubectl
+      # 2️⃣ Debug: Check Git state
+      - name: Debug Git
+        run: |
+          git status
+          git branch -a
+
+      # 3️⃣ Setup kubectl
       - name: Setup kubectl
         uses: azure/setup-kubectl@v3
 
-      # 3️⃣ K8s login
+      # 4️⃣ K8s login
       - name: K8s login
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
 
-      # 4️⃣ Apply manifests
+      # 5️⃣ Apply Kubernetes manifests
       - name: Deploy to Kubernetes
         run: |
           kubectl apply -f k8s/
