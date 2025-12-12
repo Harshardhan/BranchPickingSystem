@@ -5,48 +5,66 @@ on:
     branches: ["main"]
 
 jobs:
-
   build-and-push:
     runs-on: ubuntu-latest
-
     steps:
+      # 1️⃣ Checkout code with full history
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
+      # 2️⃣ Debug: List repo structure
+      - name: List repo files
+        run: ls -R
+
+      # 3️⃣ Log in to GitHub Container Registry
       - name: Log in to GHCR
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
 
-      - name: Build and push all microservice images
+      # 4️⃣ Build and push microservice images
+      - name: Build and push images
         run: |
           SERVICES=("api-gateway" "config-server" "eureka-server" "product-service" "order-service" "payment-service" "user-registration" "analytics-service" "consolidation-service" "notification-service")
 
           for SERVICE in "${SERVICES[@]}"; do
+            SERVICE_DIR="./$SERVICE"
+            if [ ! -d "$SERVICE_DIR" ]; then
+              echo "Directory $SERVICE_DIR does not exist! Skipping..."
+              continue
+            fi
+
             IMAGE_NAME="ghcr.io/${{ secrets.GHCR_USERNAME }}/$SERVICE:latest"
 
-            echo "Building image for $SERVICE"
-            docker build -t $IMAGE_NAME "./$SERVICE"
+            echo "🔨 Building image for $SERVICE"
+            docker build -t $IMAGE_NAME "$SERVICE_DIR"
 
-            echo "Pushing image for $SERVICE"
+            echo "🚀 Pushing image for $SERVICE"
             docker push $IMAGE_NAME
           done
 
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-
     steps:
+      # 1️⃣ Checkout code for deployment
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
+      # 2️⃣ Setup kubectl
       - name: Setup kubectl
         uses: azure/setup-kubectl@v3
 
+      # 3️⃣ K8s login
       - name: K8s login
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
 
-      - name: Apply Kubernetes manifests
+      # 4️⃣ Apply manifests
+      - name: Deploy to Kubernetes
         run: |
           kubectl apply -f k8s/
           kubectl get pods
