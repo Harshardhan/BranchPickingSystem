@@ -5,91 +5,63 @@ on:
     branches: ["main"]
 
 jobs:
+
   build-and-push:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout Repo + Submodules
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: true  # include ConfigRepo submodule if needed
 
-      # 2. Log in to Docker Hub
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ secrets.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
-      # 3. Build + Push Images for Each Microservice
-      - name: Build & Push Eureka Server
+      - name: Build and push microservice images
         run: |
-          docker build -f EurekaServerApp/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/eureka-server:latest ./EurekaServerApp
-          docker push ${{ secrets.DOCKER_USERNAME }}/eureka-server:latest
+          # List of services
+          SERVICES=("ConfigServerApp" "EurekaServerApp" "API-Gateway" "OrderServiceApplication" "NotificationService" "ProductServiceApplication" "ConsolidationService" "Common-Library" "UserRegistration" "PaymentApplication" "AnalyticsService")
 
-      - name: Build & Push Config Server
-        run: |
-          docker build -f ConfigServerApp/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/config-server:latest ./ConfigServerApp
-          docker push ${{ secrets.DOCKER_USERNAME }}/config-server:latest
+          for SERVICE in "${SERVICES[@]}"; do
+            IMAGE_NAME="ghcr.io/${{ secrets.GHCR_USERNAME }}/$SERVICE:latest"
+            echo "Building $SERVICE"
 
-      - name: Build & Push API Gateway
-        run: |
-          docker build -f API-Gateway/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/api-gateway:latest ./API-Gateway
-          docker push ${{ secrets.DOCKER_USERNAME }}/api-gateway:latest
+            # Build Docker image using repo root as context
+            docker build \
+              -f $SERVICE/Dockerfile \
+              -t $IMAGE_NAME \
+              .
 
-      - name: Build & Push User Registration Service
-        run: |
-          docker build -f User-Registration/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/user-service:latest ./User-Registration
-          docker push ${{ secrets.DOCKER_USERNAME }}/user-service:latest
-
-      - name: Build & Push Product Service
-        run: |
-          docker build -f ProductServiceApplication/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/product-service:latest ./ProductServiceApplication
-          docker push ${{ secrets.DOCKER_USERNAME }}/product-service:latest
-
-      - name: Build & Push Order Service
-        run: |
-          docker build -f OrderServiceApplication/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/order-service:latest ./OrderServiceApplication
-          docker push ${{ secrets.DOCKER_USERNAME }}/order-service:latest
-
-      - name: Build & Push Consolidation Service
-        run: |
-          docker build =f ConsolidationService/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/consolidation-service:latest ./ConsolidationService
-          docker push ${{ secrets.DOCKER_USERNAME }}/consolidation-service:latest
-
-      - name: Build & Push Payment Service
-        run: |
-          docker build -f PaymentServiceApp/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/payment-service:latest ./PaymentServiceApp
-          docker push ${{ secrets.DOCKER_USERNAME }}/payment-service:latest
-
-      - name: Build & Push Analytics Service
-        run: |
-          docker build -f AnalyticsServiceApp/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/analytics-service:latest ./AnalyticsServiceApp
-          docker push ${{ secrets.DOCKER_USERNAME }}/analytics-service:latest
-
-      - name: Build & Push Notification Service
-        run: |
-          docker build -f NotificationServiceApp/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/notification-service:latest ./NotificationServiceApp
-          docker push ${{ secrets.DOCKER_USERNAME }}/notification-service:latest
+            echo "Pushing $SERVICE image"
+            docker push $IMAGE_NAME
+          done
 
   deploy:
-    runs-on: ubuntu-latest
     needs: build-and-push
+    runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
-      # 2. Install kubectl
-      - name: Install kubectl
-        run: |
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
 
-      # 3. Apply all manifests (with validate=false to avoid your earlier errors)
-      - name: Deploy to Kubernetes
+      - name: Configure kubeconfig
         run: |
-          kubectl apply --validate=false -f k8s/
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
+
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl apply -f k8s/
+          kubectl get pods
