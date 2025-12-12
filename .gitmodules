@@ -1,0 +1,3 @@
+[submodule "ConfigRepo"]
+	path = ConfigRepo
+	url = https://github.com/Harshardhan/ConfigRepo.git
