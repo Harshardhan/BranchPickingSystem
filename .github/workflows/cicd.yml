@@ -23,6 +23,11 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       # 3. Build + Push Images for Each Microservice
+      - name: Build & Push Eureka Server
+        run: |
+          docker build -f EurekaServerApp/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/eureka-server:latest ./EurekaServerApp
+          docker push ${{ secrets.DOCKER_USERNAME }}/eureka-server:latest
+
       - name: Build & Push Config Server
         run: |
           docker build -f ConfigServerApp/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/config-server:latest ./ConfigServerApp
@@ -30,23 +35,28 @@ jobs:
 
       - name: Build & Push API Gateway
         run: |
-          docker build -f ApiGateway/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/api-gateway:latest ./ApiGateway
+          docker build -f API-Gateway/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/api-gateway:latest ./API-Gateway
           docker push ${{ secrets.DOCKER_USERNAME }}/api-gateway:latest
 
       - name: Build & Push User Registration Service
         run: |
-          docker build -f UserRegistrationApp/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/user-service:latest ./UserRegistrationApp
+          docker build -f User-Registration/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/user-service:latest ./User-Registration
           docker push ${{ secrets.DOCKER_USERNAME }}/user-service:latest
 
       - name: Build & Push Product Service
         run: |
-          docker build -f ProductServiceApp/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/product-service:latest ./ProductServiceApp
+          docker build -f ProductServiceApplication/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/product-service:latest ./ProductServiceApplication
           docker push ${{ secrets.DOCKER_USERNAME }}/product-service:latest
 
       - name: Build & Push Order Service
         run: |
-          docker build -f OrderServiceApp/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/order-service:latest ./OrderServiceApp
+          docker build -f OrderServiceApplication/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/order-service:latest ./OrderServiceApplication
           docker push ${{ secrets.DOCKER_USERNAME }}/order-service:latest
+
+      - name: Build & Push Consolidation Service
+        run: |
+          docker build =f ConsolidationService/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/consolidation-service:latest ./ConsolidationService
+          docker push ${{ secrets.DOCKER_USERNAME }}/consolidation-service:latest
 
       - name: Build & Push Payment Service
         run: |
