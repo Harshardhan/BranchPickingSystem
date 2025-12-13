@@ -32,12 +32,6 @@ jobs:
           distribution: temurin
 
       # ----------------------------
-      # Build all Maven modules
-      # ----------------------------
-      - name: Build all Maven modules
-        run: mvn clean install -DskipTests
-
-      # ----------------------------
       # Set up Docker Buildx
       # ----------------------------
       - name: Set up Docker Buildx
@@ -53,7 +47,7 @@ jobs:
           password: ${{ env.DOCKERHUB_TOKEN }}
 
       # ----------------------------
-      # Build & Push Docker Images
+      # Build & Push Docker Images (service by service)
       # ----------------------------
       - name: Build and push Docker images
         run: |
@@ -61,8 +55,17 @@ jobs:
 
           for service in "${services[@]}"; do
             service_lc=$(echo "$service" | tr '[:upper:]' '[:lower:]')
+            echo "Building Maven module for $service"
+            
+            # Build only this service/module
+            mvn -pl $service clean package -DskipTests
+
+            # Build Docker image for this service
             echo "Building Docker image for $service"
             docker build -t $DOCKER_REGISTRY/$DOCKERHUB_USERNAME/${PROJECT_NAME}-${service_lc}:$GITHUB_SHA ./$service
+
+            # Push Docker image
+            echo "Pushing Docker image for $service"
             docker push $DOCKER_REGISTRY/$DOCKERHUB_USERNAME/${PROJECT_NAME}-${service_lc}:$GITHUB_SHA
           done
 
