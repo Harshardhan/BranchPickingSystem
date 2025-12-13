@@ -6,10 +6,10 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-public class API-GatewayApplication {
+public class API-Gateway {
 
 	public static void main(String[] args) {
-		SpringApplication.run(API-GatewayApplication.class, args);
+		SpringApplication.run(API-Gateway.class, args);
 	}
 
 }
