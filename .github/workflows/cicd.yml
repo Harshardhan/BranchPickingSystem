@@ -32,18 +32,10 @@ jobs:
           distribution: temurin
 
       # ----------------------------
-      # Build JARs for each service
+      # Build all Maven modules from root
       # ----------------------------
-      - name: Build service JARs
-        run: |
-          services=("ConfigServerApp" "EurekaServerApp" "OrderServiceApplication" "AnalyticsService" "PaymentApplication" "ProductServiceApplication" "NotificationService" "UserRegistration" "ConsolidationService" "API-Gateway")
-
-          for service in "${services[@]}"; do
-            echo "Building Maven module for $service"
-            cd $service
-            mvn clean package -DskipTests
-            cd ..
-          done
+      - name: Build all Maven modules
+        run: mvn clean install -DskipTests
 
       # ----------------------------
       # Set up Docker Buildx
@@ -61,15 +53,23 @@ jobs:
           password: ${{ env.DOCKERHUB_TOKEN }}
 
       # ----------------------------
-      # Build & Push Docker Images
+      # Build & Push Docker Images for each service
       # ----------------------------
       - name: Build and push Docker images
         run: |
+          services=("ConfigServerApp" "EurekaServerApp" "OrderServiceApplication" "AnalyticsService" "PaymentApplication" "ProductServiceApplication" "NotificationService" "UserRegistration" "ConsolidationService" "API-Gateway")
+
           for service in "${services[@]}"; do
             service_lc=$(echo "$service" | tr '[:upper:]' '[:lower:]')
             echo "Building Docker image for $service"
 
+            # Make sure the JAR exists
+            ls ./$service/target/*.jar
+
+            # Build Docker image
             docker build -t $DOCKER_REGISTRY/$DOCKERHUB_USERNAME/${PROJECT_NAME}-${service_lc}:$GITHUB_SHA ./$service
+
+            # Push Docker image
             docker push $DOCKER_REGISTRY/$DOCKERHUB_USERNAME/${PROJECT_NAME}-${service_lc}:$GITHUB_SHA
           done
 
