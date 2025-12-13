@@ -19,32 +19,24 @@ jobs:
         working-directory: ${{ github.workspace }}
 
     steps:
-      # ----------------------------
       # Checkout repo with submodules
-      # ----------------------------
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          submodules: recursive   # important for multi-module Maven projects
+          submodules: recursive
 
-      # ----------------------------
-      # Set up JDK for Maven
-      # ----------------------------
+      # Set up JDK 17
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           java-version: 17
           distribution: temurin
 
-      # ----------------------------
       # Build all Maven modules
-      # ----------------------------
       - name: Build all Maven modules
         run: mvn clean install -DskipTests
 
-      # ----------------------------
       # Set up Docker
-      # ----------------------------
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
@@ -54,9 +46,7 @@ jobs:
           username: ${{ env.DOCKER_HUB_USERNAME }}
           password: ${{ env.DOCKER_HUB_TOKEN }}
 
-      # ----------------------------
       # Build and push Docker images
-      # ----------------------------
       - name: Build and push Docker images
         run: |
           services=("ConfigServerApp" "EurekaServerApp" "API-Gateway" "OrderServiceApplication" "AnalyticsService" "PaymentApplication" "ProductServiceApplication" "NotificationService" "UserRegistration" "ConsolidationService")
@@ -66,16 +56,12 @@ jobs:
             docker push $DOCKER_REGISTRY/$DOCKER_HUB_USERNAME/${PROJECT_NAME,,}-$service:$GITHUB_SHA
           done
 
-      # ----------------------------
       # Set up kubeconfig for k3d
-      # ----------------------------
       - name: Set up kubeconfig
         run: |
           echo "${KUBECONFIG_CONTENT}" > $HOME/.kube/config
 
-      # ----------------------------
       # Deploy to k3d Kubernetes
-      # ----------------------------
       - name: Deploy to k3d Kubernetes
         run: |
           kubectl apply -f k8s/
@@ -83,8 +69,6 @@ jobs:
             kubectl set image deployment/$service $service=$DOCKER_REGISTRY/$DOCKER_HUB_USERNAME/${PROJECT_NAME,,}-$service:$GITHUB_SHA --record
           done
 
-      # ----------------------------
       # Verify Deployments
-      # ----------------------------
       - name: Verify Deployments
         run: kubectl get pods -o wide
