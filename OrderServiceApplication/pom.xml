@@ -185,11 +185,12 @@
 		<!-- Common Library -->
 
 
-		<dependency>
-			<groupId>com.bps</groupId>
-			<artifactId>Common-Library</artifactId>
-			<version>0.0.1-SNAPSHOT</version> <!-- ✅ Matches your local version -->
-		</dependency>
+			<dependency>
+				<groupId>com.bps</groupId>
+				<artifactId>Common-Library</artifactId>
+				<version>0.0.1-SNAPSHOT</version>
+			</dependency>
+
 	</dependencies>
 
 	<build>

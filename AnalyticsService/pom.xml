@@ -97,10 +97,11 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
 		<dependency>
 			<groupId>com.bps</groupId>
 			<artifactId>Common-Library</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<version>1.0.0</version>
 		</dependency>
 	</dependencies>
 	<dependencyManagement>
@@ -112,6 +113,12 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+			<dependency>
+				<groupId>com.bps</groupId>
+				<artifactId>Common-Library</artifactId>
+				<version>0.0.1-SNAPSHOT</version>
+			</dependency>
+
 		</dependencies>
 	</dependencyManagement>
 	<build>
