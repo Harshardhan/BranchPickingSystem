@@ -1,67 +1,146 @@
-name: CI-CD
+name: CI-CD Pipeline
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
+
+env:
+  TAG: latest
 
 jobs:
-
-  build-and-push:
+  build-push-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: true  # include ConfigRepo submodule if needed
+    # ----------------------------------
+    # Checkout code
+    # ----------------------------------
+    - name: Checkout Repository
+      uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+    # ----------------------------------
+    # Docker Hub Login
+    # ----------------------------------
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.GHCR_USERNAME }}
-          password: ${{ secrets.GHCR_TOKEN }}
+    # ----------------------------------
+    # Build & Push All Images
+    # ----------------------------------
+    - name: Build & Push Eureka Server
+      run: |
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/eureka-server:${TAG} ./EurekaServerApp
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/eureka-server:${TAG}
 
-      - name: Build and push microservice images
-        run: |
-          # List of services
-          SERVICES=("ConfigServerApp" "EurekaServerApp" "API-Gateway" "OrderServiceApplication" "NotificationService" "ProductServiceApplication" "ConsolidationService" "Common-Library" "UserRegistration" "PaymentApplication" "AnalyticsService")
+    - name: Build & Push Config Server
+      run: |
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/config-server:${TAG} ./ConfigServerApp
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/config-server:${TAG}
 
-          for SERVICE in "${SERVICES[@]}"; do
-            IMAGE_NAME="ghcr.io/${{ secrets.GHCR_USERNAME }}/$SERVICE:latest"
-            echo "Building $SERVICE"
+    - name: Build & Push API Gateway
+      run: |
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/api-gateway:${TAG} ./ApiGatewayApp
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/api-gateway:${TAG}
 
-            # Build Docker image using repo root as context
-            docker build \
-              -f $SERVICE/Dockerfile \
-              -t $IMAGE_NAME \
-              .
+    - name: Build & Push Analytics Service
+      run: |
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/analytics-service:${TAG} ./AnalyticsServiceApp
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/analytics-service:${TAG}
 
-            echo "Pushing $SERVICE image"
-            docker push $IMAGE_NAME
-          done
+    - name: Build & Push Consolidation Service
+      run: |
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/consolidation-service:${TAG} ./ConsolidationServiceApp
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/consolidation-service:${TAG}
 
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
+    - name: Build & Push Notification Service
+      run: |
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/notification-service:${TAG} ./NotificationServiceApp
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/notification-service:${TAG}
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: true
+    - name: Build & Push Order Service
+      run: |
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/order-service:${TAG} ./OrderServiceApp
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-service:${TAG}
 
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
+    - name: Build & Push Payment Service
+      run: |
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/payment-service:${TAG} ./PaymentServiceApp
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/payment-service:${TAG}
 
-      - name: Configure kubeconfig
-        run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
+    - name: Build & Push Product Service
+      run: |
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/product-service:${TAG} ./ProductServiceApp
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/product-service:${TAG}
 
-      - name: Apply Kubernetes manifests
-        run: |
-          kubectl apply -f k8s/
-          kubectl get pods
+    - name: Build & Push User Registration Service
+      run: |
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/user-registration:${TAG} ./UserRegistrationApp
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/user-registration:${TAG}
+
+    # ----------------------------------
+    # Install kubectl
+    # ----------------------------------
+    - name: Install kubectl
+      run: |
+        curl -LO https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl
+        chmod +x kubectl
+        sudo mv kubectl /usr/local/bin/
+
+    # ----------------------------------
+    # Install k3d
+    # ----------------------------------
+    - name: Install k3d
+      run: |
+        curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+
+    # ----------------------------------
+    # Create k3d Cluster
+    # ----------------------------------
+    - name: Create k3d cluster
+      run: |
+        k3d cluster create branch-picking \
+          --agents 2 \
+          --k3s-arg "--disable=traefik@server:0"
+
+    # ----------------------------------
+    # Deploy to Kubernetes
+    # ----------------------------------
+    - name: Deploy All Services
+      run: |
+        kubectl apply -f k8s/app-config.yml
+        kubectl apply -f k8s/app-secret.yml
+        kubectl apply -f k8s/mysql-deployment.yml
+
+        kubectl apply -f k8s/eureka-server.yml
+        kubectl apply -f k8s/eureka-server-deployment.yml
+
+        kubectl apply -f k8s/config-server.yml
+        kubectl apply -f k8s/config-server-deployment.yml
+
+        kubectl apply -f k8s/api-gateway.yml
+        kubectl apply -f k8s/api-gateway-deployment.yml
+
+        kubectl apply -f k8s/analytics-service.yml
+        kubectl apply -f k8s/analytics-service-deployment.yml
+
+        kubectl apply -f k8s/consolidation-service.yml
+        kubectl apply -f k8s/consolidation-service-deployment.yml
+
+        kubectl apply -f k8s/notification-service.yml
+        kubectl apply -f k8s/notification-service-deployment.yml
+
+        kubectl apply -f k8s/order-service.yml
+        kubectl apply -f k8s/order-service-application-deployment.yml
+
+        kubectl apply -f k8s/payment-service.yml
+        kubectl apply -f k8s/payment-application-deployment.yml
+
+        kubectl apply -f k8s/product-service-application.yml
+        kubectl apply -f k8s/product-service-application-deployment.yml
+
+        kubectl apply -f k8s/user-registration.yml
+        kubectl apply -f k8s/user-registration-deployment.yml
