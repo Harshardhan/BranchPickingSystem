@@ -5,8 +5,8 @@ on:
     branches: ["main"]
 
 env:
-  DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
-  DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
   KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG_CONTENT }}
   PROJECT_NAME: branchpickingsystem
   DOCKER_REGISTRY: docker.io
@@ -49,8 +49,8 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: ${{ env.DOCKER_HUB_USERNAME }}
-          password: ${{ env.DOCKER_HUB_TOKEN }}
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
 
       # ----------------------------
       # Build and push Docker images
@@ -60,8 +60,8 @@ jobs:
           services=("ConfigServerApp" "EurekaServerApp" "OrderServiceApplication" "AnalyticsService" "PaymentApplication" "ProductServiceApplication" "NotificationService" "UserRegistration" "ConsolidationService" "API-Gateway")
           for service in "${services[@]}"; do
             echo "Building Docker image for $service"
-            docker build -t $DOCKER_REGISTRY/$DOCKER_HUB_USERNAME/${PROJECT_NAME,,}-$service:$GITHUB_SHA ./$service
-            docker push $DOCKER_REGISTRY/$DOCKER_HUB_USERNAME/${PROJECT_NAME,,}-$service:$GITHUB_SHA
+            docker build -t $DOCKER_REGISTRY/$DOCKERHUB_USERNAME/${PROJECT_NAME,,}-$service:$GITHUB_SHA ./$service
+            docker push $DOCKER_REGISTRY/$DOCKERHUB_USERNAME/${PROJECT_NAME,,}-$service:$GITHUB_SHA
           done
         working-directory: ${{ github.workspace }}
 
@@ -78,9 +78,9 @@ jobs:
       - name: Deploy to k3d Kubernetes
         run: |
           kubectl apply -f k8s/
-          services=("ConfigServerApp" "EurekaServerApp" "Api-Gateway" "OrderServiceApplication" "AnalyticsService" "PaymentApplication" "ProductServiceApplication" "NotificationService" "UserRegistration" "ConsolidationService")
+          services=("ConfigServerApp" "EurekaServerApp" "API-Gateway" "OrderServiceApplication" "AnalyticsService" "PaymentApplication" "ProductServiceApplication" "NotificationService" "UserRegistration" "ConsolidationService")
           for service in "${services[@]}"; do
-            kubectl set image deployment/$service $service=$DOCKER_REGISTRY/$DOCKER_HUB_USERNAME/${PROJECT_NAME,,}-$service:$GITHUB_SHA --record
+            kubectl set image deployment/$service $service=$DOCKER_REGISTRY/$DOCKERHUB_USERNAME/${PROJECT_NAME,,}-$service:$GITHUB_SHA --record
           done
         working-directory: ${{ github.workspace }}
 
