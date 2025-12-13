@@ -78,7 +78,7 @@ jobs:
       - name: Deploy to k3d Kubernetes
         run: |
           kubectl apply -f k8s/
-          services=("ConfigServerApp" "EurekaServerApp" "API-Gateway" "OrderServiceApplication" "AnalyticsService" "PaymentApplication" "ProductServiceApplication" "NotificationService" "UserRegistration" "ConsolidationService")
+          services=("ConfigServerApp" "EurekaServerApp" "Api-Gateway" "OrderServiceApplication" "AnalyticsService" "PaymentApplication" "ProductServiceApplication" "NotificationService" "UserRegistration" "ConsolidationService")
           for service in "${services[@]}"; do
             kubectl set image deployment/$service $service=$DOCKER_REGISTRY/$DOCKER_HUB_USERNAME/${PROJECT_NAME,,}-$service:$GITHUB_SHA --record
           done
