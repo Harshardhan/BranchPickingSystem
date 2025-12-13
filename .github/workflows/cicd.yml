@@ -17,12 +17,10 @@ jobs:
 
     steps:
       # ----------------------------
-      # Checkout repo with submodules
+      # Checkout repository
       # ----------------------------
       - name: Checkout repository
         uses: actions/checkout@v3
-        with:
-          submodules: recursive
 
       # ----------------------------
       # Set up JDK 17
@@ -38,7 +36,6 @@ jobs:
       # ----------------------------
       - name: Build all Maven modules
         run: mvn clean install -DskipTests
-        working-directory: ${{ github.workspace }}  # root of repo
 
       # ----------------------------
       # Set up Docker Buildx
@@ -46,6 +43,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      # ----------------------------
+      # Login to Docker Hub
+      # ----------------------------
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
@@ -53,36 +53,40 @@ jobs:
           password: ${{ env.DOCKERHUB_TOKEN }}
 
       # ----------------------------
-      # Build and push Docker images
+      # Build & Push Docker Images
       # ----------------------------
       - name: Build and push Docker images
         run: |
           services=("ConfigServerApp" "EurekaServerApp" "OrderServiceApplication" "AnalyticsService" "PaymentApplication" "ProductServiceApplication" "NotificationService" "UserRegistration" "ConsolidationService" "API-Gateway")
+
           for service in "${services[@]}"; do
+            service_lc=$(echo "$service" | tr '[:upper:]' '[:lower:]')
             echo "Building Docker image for $service"
-            docker build -t $DOCKER_REGISTRY/$DOCKERHUB_USERNAME/${PROJECT_NAME,,}-$service:$GITHUB_SHA ./$service
-            docker push $DOCKER_REGISTRY/$DOCKERHUB_USERNAME/${PROJECT_NAME,,}-$service:$GITHUB_SHA
+            docker build -t $DOCKER_REGISTRY/$DOCKERHUB_USERNAME/${PROJECT_NAME}-${service_lc}:$GITHUB_SHA ./$service
+            docker push $DOCKER_REGISTRY/$DOCKERHUB_USERNAME/${PROJECT_NAME}-${service_lc}:$GITHUB_SHA
           done
-        working-directory: ${{ github.workspace }}
 
       # ----------------------------
       # Set up kubeconfig
       # ----------------------------
       - name: Set up kubeconfig
         run: |
+          mkdir -p $HOME/.kube
           echo "${KUBECONFIG_CONTENT}" > $HOME/.kube/config
 
       # ----------------------------
-      # Deploy to k3d Kubernetes
+      # Deploy to Kubernetes
       # ----------------------------
-      - name: Deploy to k3d Kubernetes
+      - name: Deploy to Kubernetes
         run: |
           kubectl apply -f k8s/
-          services=("ConfigServerApp" "EurekaServerApp" "API-Gateway" "OrderServiceApplication" "AnalyticsService" "PaymentApplication" "ProductServiceApplication" "NotificationService" "UserRegistration" "ConsolidationService")
+
+          services=("ConfigServerApp" "EurekaServerApp" "OrderServiceApplication" "AnalyticsService" "PaymentApplication" "ProductServiceApplication" "NotificationService" "UserRegistration" "ConsolidationService" "API-Gateway")
+
           for service in "${services[@]}"; do
-            kubectl set image deployment/$service $service=$DOCKER_REGISTRY/$DOCKERHUB_USERNAME/${PROJECT_NAME,,}-$service:$GITHUB_SHA --record
+            service_lc=$(echo "$service" | tr '[:upper:]' '[:lower:]')
+            kubectl set image deployment/$service $service=$DOCKER_REGISTRY/$DOCKERHUB_USERNAME/${PROJECT_NAME}-${service_lc}:$GITHUB_SHA
           done
-        working-directory: ${{ github.workspace }}
 
       # ----------------------------
       # Verify Deployments
