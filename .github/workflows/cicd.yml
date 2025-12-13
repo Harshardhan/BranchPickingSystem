@@ -57,7 +57,7 @@ jobs:
       # ----------------------------
       - name: Build and push Docker images
         run: |
-          services=("ConfigServerApp" "EurekaServerApp" "API-Gateway" "OrderServiceApplication" "AnalyticsService" "PaymentApplication" "ProductServiceApplication" "NotificationService" "UserRegistration" "ConsolidationService")
+          services=("ConfigServerApp" "EurekaServerApp" "OrderServiceApplication" "AnalyticsService" "PaymentApplication" "ProductServiceApplication" "NotificationService" "UserRegistration" "ConsolidationService")
           for service in "${services[@]}"; do
             echo "Building Docker image for $service"
             docker build -t $DOCKER_REGISTRY/$DOCKER_HUB_USERNAME/${PROJECT_NAME,,}-$service:$GITHUB_SHA ./$service
