@@ -33,7 +33,7 @@ jobs:
     # ----------------------------------
     - name: Build & Push Eureka Server
       run: |
-        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/eureka-server:${TAG} ./EurekaServerApp
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/eureka-server:latest .
         docker push ${{ secrets.DOCKERHUB_USERNAME }}/eureka-server:${TAG}
 
     - name: Build & Push Config Server
