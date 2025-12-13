@@ -5,8 +5,8 @@ on:
     branches: ["main"]
 
 env:
-  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+  DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+  DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
   KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG_CONTENT }}
   PROJECT_NAME: branchpickingsystem
   DOCKER_REGISTRY: docker.io
@@ -19,27 +19,44 @@ jobs:
         working-directory: ${{ github.workspace }}
 
     steps:
-      - name: Checkout Code
+      # ----------------------------
+      # Checkout repo with submodules
+      # ----------------------------
+      - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          submodules: recursive   # important for multi-module Maven projects
 
+      # ----------------------------
+      # Set up JDK for Maven
+      # ----------------------------
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           java-version: 17
           distribution: temurin
 
+      # ----------------------------
+      # Build all Maven modules
+      # ----------------------------
       - name: Build all Maven modules
         run: mvn clean install -DskipTests
 
+      # ----------------------------
+      # Set up Docker
+      # ----------------------------
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: ${{ env.DOCKERHUB_USERNAME }}
-          password: ${{ env.DOCKERHUB_TOKEN }}
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ env.DOCKER_HUB_TOKEN }}
 
+      # ----------------------------
+      # Build and push Docker images
+      # ----------------------------
       - name: Build and push Docker images
         run: |
           services=("ConfigServerApp" "EurekaServerApp" "API-Gateway" "OrderServiceApplication" "AnalyticsService" "PaymentApplication" "ProductServiceApplication" "NotificationService" "UserRegistration" "ConsolidationService")
@@ -49,10 +66,16 @@ jobs:
             docker push $DOCKER_REGISTRY/$DOCKER_HUB_USERNAME/${PROJECT_NAME,,}-$service:$GITHUB_SHA
           done
 
+      # ----------------------------
+      # Set up kubeconfig for k3d
+      # ----------------------------
       - name: Set up kubeconfig
         run: |
           echo "${KUBECONFIG_CONTENT}" > $HOME/.kube/config
 
+      # ----------------------------
+      # Deploy to k3d Kubernetes
+      # ----------------------------
       - name: Deploy to k3d Kubernetes
         run: |
           kubectl apply -f k8s/
@@ -60,5 +83,8 @@ jobs:
             kubectl set image deployment/$service $service=$DOCKER_REGISTRY/$DOCKER_HUB_USERNAME/${PROJECT_NAME,,}-$service:$GITHUB_SHA --record
           done
 
+      # ----------------------------
+      # Verify Deployments
+      # ----------------------------
       - name: Verify Deployments
         run: kubectl get pods -o wide
