@@ -32,7 +32,7 @@ jobs:
           distribution: temurin
 
       # ----------------------------
-      # Build all Maven modules (multi-module build)
+      # Build all Maven modules
       # ----------------------------
       - name: Build all Maven modules
         run: mvn clean install -DskipTests
@@ -53,7 +53,7 @@ jobs:
           password: ${{ env.DOCKERHUB_TOKEN }}
 
       # ----------------------------
-      # Build & Push Docker Images (service by service)
+      # Build & Push Docker Images (pre-built JARs)
       # ----------------------------
       - name: Build and push Docker images
         run: |
@@ -63,7 +63,10 @@ jobs:
             service_lc=$(echo "$service" | tr '[:upper:]' '[:lower:]')
             echo "Building Docker image for $service"
 
-            # Build Docker image (JAR already exists from previous step)
+            # Make sure the JAR exists
+            ls ./$service/target/*.jar
+
+            # Build Docker image
             docker build -t $DOCKER_REGISTRY/$DOCKERHUB_USERNAME/${PROJECT_NAME}-${service_lc}:$GITHUB_SHA ./$service
 
             # Push Docker image
