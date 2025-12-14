@@ -35,7 +35,7 @@ jobs:
     # Maven build (IMPORTANT)
     # ----------------------------
     - name: Build all Maven modules
-      run: mvn clean install -DskipTests
+      run: mvn clean package -DskipTests
 
     # ----------------------------
     # Docker
