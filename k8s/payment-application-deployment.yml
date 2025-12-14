@@ -15,6 +15,7 @@ spec:
       containers:
         - name: payment-service
           image: harsha79/payment-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8086
           resources:

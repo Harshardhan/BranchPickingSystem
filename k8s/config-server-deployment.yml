@@ -15,6 +15,7 @@ spec:
       containers:
         - name: config-server
           image: harsha79/config-server:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8888
           resources:

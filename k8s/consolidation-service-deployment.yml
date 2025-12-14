@@ -15,6 +15,7 @@ spec:
       containers:
         - name: consolidation-service
           image: harsha79/consolidation-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8084
           resources:

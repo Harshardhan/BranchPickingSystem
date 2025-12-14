@@ -15,6 +15,7 @@ spec:
       containers:
         - name: eureka-server
           image: harsha79/api-gateway:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
           resources:
