@@ -2,8 +2,7 @@
 FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
 
-COPY pom.xml .
-COPY src ./src
+COPY . .
 RUN mvn clean install -DskipTests
 
 # ---------- RUNTIME STAGE ----------
@@ -13,7 +12,7 @@ WORKDIR /app
 RUN apk add --no-cache curl bash
 RUN mkdir -p logs
 
-COPY --from=build /app/target/*jar app.jar
+COPY --from=build /app/API-Gateway/target/API-Gateway-0.0.1-SNAPSHOT.jar API-Gateway.jar
 
 EXPOSE 80
-ENTRYPOINT ["java","-jar","app.jar"]
+ENTRYPOINT ["java","-jar","API-Gateway.jar"]
