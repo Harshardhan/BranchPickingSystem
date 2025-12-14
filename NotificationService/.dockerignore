@@ -1,5 +1,5 @@
 # Maven build directory
-target/
+
 
 # IDE configuration files
 .classpath
