@@ -23,7 +23,7 @@ jobs:
 
       # 3️⃣ Build ALL Maven modules (at project root)
       - name: Build Maven multi-module project
-        run: mvn clean package -DskipTests
+        run: mvn clean install -DskipTests
 
       # 4️⃣ Login to DockerHub
       - name: DockerHub Login
