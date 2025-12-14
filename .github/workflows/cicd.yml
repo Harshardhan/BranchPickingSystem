@@ -1,4 +1,4 @@
-name: Branch Picking System CI-CD
+name: Branch Picking System CI/CD
 
 on:
   push:
@@ -10,84 +10,98 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout
+      # 1️⃣ Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ DockerHub Login
+      # 2️⃣ Setup Java
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # 3️⃣ Build ALL Maven modules (at project root)
+      - name: Build Maven multi-module project
+        run: mvn clean package -DskipTests
+
+      # 4️⃣ Login to DockerHub
       - name: DockerHub Login
-        run: |
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login \
-          -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
       # =========================
-      # 3️⃣ BUILD & PUSH IMAGES
+      # 5️⃣ BUILD & PUSH IMAGES
       # =========================
 
       - name: Build & Push Eureka Server
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/eureka-server:latest EurekaServerApp
+          cd EurekaServerApp
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/eureka-server:latest .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/eureka-server:latest
 
       - name: Build & Push API Gateway
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/api-gateway:latest API-Gateway
+          cd API-Gateway
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/api-gateway:latest .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/api-gateway:latest
 
       - name: Build & Push Config Server
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/config-server:latest ConfigServerApp
+          cd ConfigServerApp
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/config-server:latest .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/config-server:latest
 
       - name: Build & Push Order Service
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/order-service:latest OrderServiceApplication
+          cd OrderServiceApplication
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/order-service:latest .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-service:latest
 
       - name: Build & Push Product Service
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/product-service:latest ProductServiceApplication
+          cd ProductServiceApplication
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/product-service:latest .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/product-service:latest
 
       - name: Build & Push Payment Service
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/payment-service:latest PaymentApplication
+          cd PaymentApplication
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/payment-service:latest .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/payment-service:latest
 
       - name: Build & Push Notification Service
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/notification-service:latest NotificationService
+          cd NotificationService
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/notification-service:latest .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/notification-service:latest
 
       - name: Build & Push Analytics Service
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/analytics-service:latest AnalyticsService
+          cd AnalyticsService
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/analytics-service:latest .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/analytics-service:latest
 
       - name: Build & Push Consolidation Service
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/consolidation-service:latest ConsolidationService
+          cd ConsolidationService
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/consolidation-service:latest .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/consolidation-service:latest
 
       - name: Build & Push User Registration Service
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/user-registration:latest UserRegistration
+          cd UserRegistration
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/user-registration:latest .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/user-registration:latest
 
       # =========================
-      # 4️⃣ DEPLOY TO KUBERNETES
+      # 6️⃣ DEPLOY TO KUBERNETES
       # =========================
-
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: v1.31.0
 
       - name: Setup kubeconfig
         run: |
           echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > kubeconfig
           export KUBECONFIG=$PWD/kubeconfig
-          kubectl get nodes
+          kubectl version --client
 
       - name: Deploy to Kubernetes
         run: |
