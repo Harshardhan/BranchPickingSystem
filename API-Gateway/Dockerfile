@@ -1,18 +1,20 @@
-# ---------- BUILD STAGE ----------
-FROM maven:3.9.6-eclipse-temurin-17 AS build
-WORKDIR /app
-
-COPY . .
-RUN mvn clean install -DskipTests
-
-# ---------- RUNTIME STAGE ----------
 FROM eclipse-temurin:17-jre-alpine
+
 WORKDIR /app
 
+# Optional tools
 RUN apk add --no-cache curl bash
+
+# Logs directory
 RUN mkdir -p logs
 
-COPY --from=build /app/API-Gateway/target/API-Gateway-0.0.1-SNAPSHOT.jar API-Gateway.jar
+# JVM settings
+ENV JAVA_OPTS="-Xms256m -Xmx512m"
+ENV SPRING_PROFILES_ACTIVE=dev
+
+# Copy the pre-built JAR from GitHub Actions
+COPY target/*.jar app.jar
 
 EXPOSE 80
-ENTRYPOINT ["java","-jar","API-Gateway.jar"]
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dspring.profiles.active=$SPRING_PROFILES_ACTIVE -jar app.jar"]

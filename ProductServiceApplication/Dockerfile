@@ -1,19 +1,20 @@
-# ---------- BUILD STAGE ----------
-FROM maven:3.9.6-eclipse-temurin-17 AS build
-WORKDIR /app
-
-COPY pom.xml .
-COPY src ./src
-RUN mvn clean install -DskipTests
-
-# ---------- RUNTIME STAGE ----------
 FROM eclipse-temurin:17-jre-alpine
+
 WORKDIR /app
 
+# Optional tools
 RUN apk add --no-cache curl bash
+
+# Logs directory
 RUN mkdir -p logs
 
-COPY --from=build /app/target/*jar app.jar
+# JVM settings
+ENV JAVA_OPTS="-Xms256m -Xmx512m"
+ENV SPRING_PROFILES_ACTIVE=dev
+
+# Copy the pre-built JAR from GitHub Actions
+COPY target/*.jar app.jar
 
 EXPOSE 8082
-ENTRYPOINT ["java","-jar","app.jar"]
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dspring.profiles.active=$SPRING_PROFILES_ACTIVE -jar app.jar"]
