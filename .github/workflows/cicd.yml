@@ -6,7 +6,7 @@ on:
 
 jobs:
   ci-k3d:
-    runs-on: self-hosted
+    runs-on: [self-hosted, Windows, X64]
 
     steps:
     # -------------------------
@@ -16,99 +16,106 @@ jobs:
       uses: actions/checkout@v4
 
     # -------------------------
-    # Java + Maven
+    # Verify Java & Maven
     # -------------------------
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: 17
-        distribution: temurin
+    - name: Verify Java & Maven
+      run: |
+        java -version
+        mvn -v
+      shell: powershell
 
+    # -------------------------
+    # Build Maven modules
+    # -------------------------
     - name: Build Maven modules
       run: mvn clean package -DskipTests
       shell: powershell
 
     # -------------------------
-    # Install k3d (PowerShell)
+    # Install kubectl (if missing)
+    # -------------------------
+    - name: Install kubectl
+      run: |
+        if (-not (Get-Command kubectl -ErrorAction SilentlyContinue)) {
+          choco install kubernetes-cli -y
+        }
+        kubectl version --client
+      shell: powershell
+
+    # -------------------------
+    # Install k3d (OFFICIAL)
     # -------------------------
     - name: Install k3d
       run: |
-        Invoke-WebRequest -Uri https://raw.githubusercontent.com/k3d-io/k3d/main/install.ps1 -OutFile install.ps1
-        .\install.ps1
+        if (-not (Get-Command k3d -ErrorAction SilentlyContinue)) {
+          choco install k3d -y
+        }
         k3d version
       shell: powershell
 
     # -------------------------
-    # Create k3d cluster
+    # Create fresh k3d cluster
     # -------------------------
     - name: Create k3d cluster
       run: |
+        k3d cluster delete branchpickingsystem 2>$null
         k3d cluster create branchpickingsystem --agents 2 --wait
         kubectl get nodes -o wide
       shell: powershell
 
     # -------------------------
-    # Build images & import into k3d
+    # Build images & import
     # -------------------------
     - name: Build & import Docker images
       run: |
         $SERVICES = @(
-          "config-server", "eureka-server", "order-service", "analytics-service",
-          "payment-service", "product-service", "notification-service",
-          "user-registration", "consolidation-service", "api-gateway"
+          "config-server","eureka-server","order-service","analytics-service",
+          "payment-service","product-service","notification-service",
+          "user-registration","consolidation-service","api-gateway"
         )
 
         $MODULES = @(
-          "ConfigServerApp", "EurekaServerApp", "OrderServiceApplication",
-          "AnalyticsService", "PaymentApplication", "ProductServiceApplication",
-          "NotificationService", "UserRegistration", "ConsolidationService",
+          "ConfigServerApp","EurekaServerApp","OrderServiceApplication",
+          "AnalyticsService","PaymentApplication","ProductServiceApplication",
+          "NotificationService","UserRegistration","ConsolidationService",
           "API-Gateway"
         )
 
         for ($i=0; $i -lt $SERVICES.Length; $i++) {
-          docker build -t $SERVICES[$i]:ci .\$MODULES[$i]
-          k3d image import $SERVICES[$i]:ci -c branchpickingsystem
+          docker build -t "$($SERVICES[$i]):ci" ".\$($MODULES[$i])"
+          k3d image import "$($SERVICES[$i]):ci" -c branchpickingsystem
         }
       shell: powershell
 
     # -------------------------
-    # Deploy Kubernetes manifests
+    # Deploy manifests
     # -------------------------
     - name: Deploy to k3d
       run: kubectl apply -f k8s/
       shell: powershell
 
     # -------------------------
-    # Wait until Eureka is READY
+    # Wait for Eureka
     # -------------------------
     - name: Wait for Eureka
-      run: kubectl rollout status deployment/eureka-server --timeout=120s
+      run: kubectl rollout status deployment/eureka-server --timeout=180s
       shell: powershell
 
     # -------------------------
-    # Show pod status
+    # Show cluster state (PROOF)
     # -------------------------
-    - name: Pod status
+    - name: Pods
       run: kubectl get pods -o wide
       shell: powershell
 
-    # -------------------------
-    # Show deployments
-    # -------------------------
-    - name: Deployment status
+    - name: Deployments
       run: kubectl get deployments
       shell: powershell
 
-    # -------------------------
-    # Show services
-    # -------------------------
-    - name: Service status
+    - name: Services
       run: kubectl get svc
       shell: powershell
 
-    # -------------------------
-    # Eureka logs
-    # -------------------------
     - name: Eureka logs
       run: kubectl logs deploy/eureka-server --tail=50
       shell: powershell
