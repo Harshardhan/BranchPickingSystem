@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: eureka-server
 spec:
-  replicas: 1   # reduce replicas from 2 → 1 (saves 500MB)
+  replicas: 1
   selector:
     matchLabels:
       app: eureka-server
@@ -14,8 +14,8 @@ spec:
     spec:
       containers:
         - name: eureka-server
-          image: harsha79/eureka-server:latest
-          imagePullPolicy: Always
+          image: eureka-server:ci
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8761
           resources:

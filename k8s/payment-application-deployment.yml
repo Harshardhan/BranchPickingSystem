@@ -14,10 +14,10 @@ spec:
     spec:
       containers:
         - name: payment-service
-          image: harsha79/payment-service:latest
-          imagePullPolicy: Always
+          image: payment-service:ci
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8086
+            - containerPort: 8087
           resources:
             requests:
               memory: "256Mi"
@@ -25,8 +25,3 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
-          envFrom:          # ← moved OUTSIDE resources
-            - configMapRef:
-                name: app-config
-            - secretRef:
-                name: app-secret

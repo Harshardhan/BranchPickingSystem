@@ -14,8 +14,8 @@ spec:
     spec:
       containers:
         - name: user-registration
-          image: harsha79/user-registration:latest
-          imagePullPolicy: Always
+          image: user-registration:ci
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8083
           resources:
@@ -25,8 +25,3 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
-          envFrom:          # ← moved OUTSIDE resources
-            - configMapRef:
-                name: app-config
-            - secretRef:
-                name: app-secret

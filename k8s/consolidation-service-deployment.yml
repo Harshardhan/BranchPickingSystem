@@ -14,8 +14,8 @@ spec:
     spec:
       containers:
         - name: consolidation-service
-          image: harsha79/consolidation-service:latest
-          imagePullPolicy: Always
+          image: consolidation-service:ci
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8084
           resources:
@@ -25,8 +25,3 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
-          envFrom:          # ← moved OUTSIDE resources
-            - configMapRef:
-                name: app-config
-            - secretRef:
-                name: app-secret
