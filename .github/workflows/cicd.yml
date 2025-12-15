@@ -40,10 +40,8 @@ jobs:
     # -------------------------
     - name: Create k3d cluster
       run: |
-        k3d cluster create branchpickingsystem \
-          --agents 2 \
-          --wait
-        kubectl get nodes
+        k3d cluster create branchpickingsystem --agents 2 --wait
+        kubectl get nodes -o wide
 
     # -------------------------
     # Build images + import into k3d
@@ -77,7 +75,6 @@ jobs:
         )
 
         for i in "${!SERVICES[@]}"; do
-          echo "Building ${SERVICES[$i]} from ${MODULES[$i]}"
           docker build -t ${SERVICES[$i]}:ci ./${MODULES[$i]}
           k3d image import ${SERVICES[$i]}:ci -c branchpickingsystem
         done
@@ -88,12 +85,42 @@ jobs:
     - name: Deploy to k3d
       run: |
         kubectl apply -f k8s/
+
+    # -------------------------
+    # WAIT until Eureka is READY
+    # -------------------------
+    - name: Wait for Eureka
+      run: |
+        kubectl rollout status deployment/eureka-server --timeout=120s
+
+    # -------------------------
+    # SHOW POD STATUS (MAIN PROOF)
+    # -------------------------
+    - name: Pod status
+      run: |
+        echo "==== PODS ===="
         kubectl get pods -o wide
 
     # -------------------------
-    # Verify
+    # SHOW DEPLOYMENTS
     # -------------------------
-    - name: Verify deployments
+    - name: Deployment status
       run: |
+        echo "==== DEPLOYMENTS ===="
         kubectl get deployments
+
+    # -------------------------
+    # SHOW SERVICES
+    # -------------------------
+    - name: Service status
+      run: |
+        echo "==== SERVICES ===="
         kubectl get svc
+
+    # -------------------------
+    # EUREKA LOGS (REAL PROOF)
+    # -------------------------
+    - name: Eureka logs
+      run: |
+        echo "==== EUREKA LOGS ===="
+        kubectl logs deploy/eureka-server --tail=50
