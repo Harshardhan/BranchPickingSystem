@@ -38,3 +38,31 @@ logs/
 *.gz
 # Ignore environment files
 .env
+################################
+# Kubernetes
+################################
+kubeconfig.yaml
+.kube/
+
+################################
+# SonarQube
+################################
+.scannerwork/
+
+################################
+# Docker local artifacts
+################################
+docker/
+*.tar
+
+################################
+# GitHub self-hosted runner
+################################
+actions-runner/
+
+################################
+# Temporary / binaries
+################################
+cls
+curl
+type
