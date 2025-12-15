@@ -6,7 +6,7 @@ on:
 
 jobs:
   ci-k3d:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
     # -------------------------
@@ -26,14 +26,17 @@ jobs:
 
     - name: Build Maven modules
       run: mvn clean package -DskipTests
+      shell: powershell
 
     # -------------------------
-    # Install k3d
+    # Install k3d (PowerShell)
     # -------------------------
     - name: Install k3d
       run: |
-        curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+        Invoke-WebRequest -Uri https://raw.githubusercontent.com/k3d-io/k3d/main/install.ps1 -OutFile install.ps1
+        .\install.ps1
         k3d version
+      shell: powershell
 
     # -------------------------
     # Create k3d cluster
@@ -42,85 +45,70 @@ jobs:
       run: |
         k3d cluster create branchpickingsystem --agents 2 --wait
         kubectl get nodes -o wide
+      shell: powershell
 
     # -------------------------
-    # Build images + import into k3d
+    # Build images & import into k3d
     # -------------------------
     - name: Build & import Docker images
       run: |
-        SERVICES=(
-          "config-server"
-          "eureka-server"
-          "order-service"
-          "analytics-service"
-          "payment-service"
-          "product-service"
-          "notification-service"
-          "user-registration"
-          "consolidation-service"
-          "api-gateway"
+        $SERVICES = @(
+          "config-server", "eureka-server", "order-service", "analytics-service",
+          "payment-service", "product-service", "notification-service",
+          "user-registration", "consolidation-service", "api-gateway"
         )
 
-        MODULES=(
-          "ConfigServerApp"
-          "EurekaServerApp"
-          "OrderServiceApplication"
-          "AnalyticsService"
-          "PaymentApplication"
-          "ProductServiceApplication"
-          "NotificationService"
-          "UserRegistration"
-          "ConsolidationService"
+        $MODULES = @(
+          "ConfigServerApp", "EurekaServerApp", "OrderServiceApplication",
+          "AnalyticsService", "PaymentApplication", "ProductServiceApplication",
+          "NotificationService", "UserRegistration", "ConsolidationService",
           "API-Gateway"
         )
 
-        for i in "${!SERVICES[@]}"; do
-          docker build -t ${SERVICES[$i]}:ci ./${MODULES[$i]}
-          k3d image import ${SERVICES[$i]}:ci -c branchpickingsystem
-        done
+        for ($i=0; $i -lt $SERVICES.Length; $i++) {
+          docker build -t $SERVICES[$i]:ci .\$MODULES[$i]
+          k3d image import $SERVICES[$i]:ci -c branchpickingsystem
+        }
+      shell: powershell
 
     # -------------------------
     # Deploy Kubernetes manifests
     # -------------------------
     - name: Deploy to k3d
-      run: |
-        kubectl apply -f k8s/
+      run: kubectl apply -f k8s/
+      shell: powershell
 
     # -------------------------
-    # WAIT until Eureka is READY
+    # Wait until Eureka is READY
     # -------------------------
     - name: Wait for Eureka
-      run: |
-        kubectl rollout status deployment/eureka-server --timeout=120s
+      run: kubectl rollout status deployment/eureka-server --timeout=120s
+      shell: powershell
 
     # -------------------------
-    # SHOW POD STATUS (MAIN PROOF)
+    # Show pod status
     # -------------------------
     - name: Pod status
-      run: |
-        echo "==== PODS ===="
-        kubectl get pods -o wide
+      run: kubectl get pods -o wide
+      shell: powershell
 
     # -------------------------
-    # SHOW DEPLOYMENTS
+    # Show deployments
     # -------------------------
     - name: Deployment status
-      run: |
-        echo "==== DEPLOYMENTS ===="
-        kubectl get deployments
+      run: kubectl get deployments
+      shell: powershell
 
     # -------------------------
-    # SHOW SERVICES
+    # Show services
     # -------------------------
     - name: Service status
-      run: |
-        echo "==== SERVICES ===="
-        kubectl get svc
+      run: kubectl get svc
+      shell: powershell
 
     # -------------------------
-    # EUREKA LOGS (REAL PROOF)
+    # Eureka logs
     # -------------------------
     - name: Eureka logs
-      run: |
-        echo "==== EUREKA LOGS ===="
-        kubectl logs deploy/eureka-server --tail=50
+      run: kubectl logs deploy/eureka-server --tail=50
+      shell: powershell
