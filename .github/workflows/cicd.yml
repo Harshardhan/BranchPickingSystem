@@ -10,7 +10,7 @@ jobs:
 
     steps:
     # -------------------------
-    # Checkout
+    # Checkout repository
     # -------------------------
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -39,32 +39,39 @@ jobs:
         k3d version
 
     # -------------------------
-    # Ensure k3d cluster exists
+    # Setup k3d cluster with local registry
     # -------------------------
-    - name: Ensure k3d cluster exists
+    - name: Setup k3d cluster and registry
+      shell: powershell
       run: |
+        $regName = "registry.localhost"
+        $regPort = "5000"
+        $clusterName = "branchpickingsystem"
+
+        # Clean existing cluster and registry
+        if (k3d cluster list | Select-String $clusterName) { k3d cluster delete $clusterName }
+        if (k3d registry list | Select-String $regName) { k3d registry delete $regName }
+
+        # Create registry
+        k3d registry create $regName --port $regPort
+
+        # Create cluster with registry linked
+        k3d cluster create $clusterName --registry-use $regName:$regPort
+
+        # Verify cluster
         k3d cluster list
         kubectl get nodes
 
     # -------------------------
-    # Create local registry & build/push images
+    # Build and push Docker images
     # -------------------------
-    - name: Build & Push Docker Images to Local Registry
+    - name: Build & push Docker images
       shell: powershell
       run: |
         $regName = "registry.localhost"
         $regPort = "5000"
         $registryFull = "${regName}:${regPort}"
 
-        # Create registry if not exists
-        if (-not (k3d registry list | Select-String $regName)) {
-            Write-Host "Creating local registry $regName on port $regPort..."
-            k3d registry create $regName --port $regPort
-        } else {
-            Write-Host "Local registry $regName already exists."
-        }
-
-        # Define services and modules
         $SERVICES = @(
           "config-server","eureka-server","order-service","analytics-service",
           "payment-service","product-service","notification-service",
@@ -78,12 +85,11 @@ jobs:
           "API-Gateway"
         )
 
-        # Build & push images
         for ($i=0; $i -lt $SERVICES.Length; $i++) {
             $imageName = "${registryFull}/${SERVICES[$i]}:ci"
             $modulePath = ".\$($MODULES[$i])"
 
-            Write-Host "Building image $imageName from path $modulePath..."
+            Write-Host "Building image $imageName from $modulePath..."
             docker build -t $imageName $modulePath
 
             Write-Host "Pushing image $imageName to local registry..."
@@ -91,15 +97,50 @@ jobs:
         }
 
     # -------------------------
-    # Deploy to k3d
+    # Deploy Infrastructure Services
     # -------------------------
-    - name: Deploy to k3d
-      run: kubectl apply -f k8s/
+    - name: Deploy Infrastructure Services
+      run: |
+        kubectl apply -f k8s/infra/redis.yaml
+        kubectl apply -f k8s/infra/kafka.yaml
+        kubectl apply -f k8s/config-server.yaml
+        kubectl apply -f k8s/eureka-server.yaml
+        kubectl apply -f k8s/mysql.yaml
 
-    - name: Wait for Eureka
-      run: kubectl rollout status deployment/eureka-server --timeout=180s
+        # Wait for infra pods
+        kubectl rollout status deployment/config-server --timeout=300s
+        kubectl rollout status deployment/eureka-server --timeout=300s
+        kubectl rollout status statefulset/redis --timeout=300s
+        kubectl rollout status statefulset/kafka --timeout=300s
+        kubectl rollout status deployment/mysql --timeout=300s
 
-    - name: Verify Pods & Services
+    # -------------------------
+    # Deploy Microservices Sequentially
+    # -------------------------
+    - name: Deploy Microservices Sequentially
+      shell: powershell
+      run: |
+        $microservices = @(
+          "order-service",
+          "payment-service",
+          "product-service",
+          "analytics-service",
+          "notification-service",
+          "user-registration",
+          "consolidation-service",
+          "api-gateway"
+        )
+
+        foreach ($svc in $microservices) {
+          Write-Host "Deploying $svc..."
+          kubectl apply -f "k8s/$svc.yaml"
+          kubectl rollout status deployment/$svc --timeout=300s
+        }
+
+    # -------------------------
+    # Verify all pods & services
+    # -------------------------
+    - name: Verify Cluster State
       run: |
         kubectl get pods -o wide
         kubectl get svc
