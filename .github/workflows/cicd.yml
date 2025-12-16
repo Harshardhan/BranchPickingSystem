@@ -39,7 +39,7 @@ jobs:
         k3d version
 
     # -------------------------
-    # Setup k3d cluster with local registry
+    # Setup k3d cluster with local registry (PowerShell safe)
     # -------------------------
     - name: Setup k3d cluster and registry
       shell: powershell
@@ -52,11 +52,14 @@ jobs:
         if (k3d cluster list | Select-String $clusterName) { k3d cluster delete $clusterName }
         if (k3d registry list | Select-String $regName) { k3d registry delete $regName }
 
-        # Create registry
+        # Create local registry
         k3d registry create $regName --port $regPort
 
-        # Create cluster with registry linked
-        k3d cluster create $clusterName --registry-use $regName:$regPort
+        # Prepare full registry string
+        $registryFull = "${regName}:${regPort}"
+
+        # Create cluster with registry linked (PowerShell safe)
+        k3d cluster create $clusterName --registry-use $registryFull
 
         # Verify cluster
         k3d cluster list
@@ -97,7 +100,7 @@ jobs:
         }
 
     # -------------------------
-    # Deploy Infrastructure Services
+    # Deploy Infrastructure Services (Eureka, Config, Redis, Kafka, MySQL)
     # -------------------------
     - name: Deploy Infrastructure Services
       run: |
@@ -107,7 +110,7 @@ jobs:
         kubectl apply -f k8s/eureka-server.yaml
         kubectl apply -f k8s/mysql.yaml
 
-        # Wait for infra pods
+        # Wait for infra pods to be ready
         kubectl rollout status deployment/config-server --timeout=300s
         kubectl rollout status deployment/eureka-server --timeout=300s
         kubectl rollout status statefulset/redis --timeout=300s
@@ -146,7 +149,7 @@ jobs:
         kubectl get svc
 
     # -------------------------
-    # Test Internet Connectivity
+    # Test Internet Connectivity from Cluster
     # -------------------------
     - name: Test Internet Access from Cluster
       run: |
