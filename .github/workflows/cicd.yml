@@ -1,107 +1,64 @@
-name: CI with k3d (BranchPickingSystem)
+name: CI-CD with k3d (BranchPickingSystem)
 
 on:
   push:
     branches: ["main"]
 
 jobs:
-  ci-k3d:
+  cd-k3d:
     runs-on: self-hosted
 
     steps:
-    # -------------------------
-    # Checkout
-    # -------------------------
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # -------------------------
-    # Verify Java & Maven
-    # -------------------------
     - name: Verify Java & Maven
       run: |
         java -version
         mvn -v
 
-    # -------------------------
-    # Build Maven modules
-    # -------------------------
     - name: Build Maven modules
       run: mvn clean package -DskipTests
 
-    # -------------------------
-    # Install kubectl
-    # -------------------------
-    - name: Install kubectl
+    - name: Verify tools
       run: |
-        curl -LO https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl
-        chmod +x kubectl
-        sudo mv kubectl /usr/local/bin/
+        docker --version
         kubectl version --client
-
-    # -------------------------
-    # Install k3d
-    # -------------------------
-    - name: Install k3d
-      run: |
-        curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
         k3d version
 
-    # -------------------------
-    # Create k3d cluster
-    # -------------------------
-    - name: Create k3d cluster
+    # ❌ DO NOT DELETE CLUSTER IN CD
+    - name: Ensure k3d cluster exists
       run: |
-        k3d cluster delete branchpickingsystem || true
-        k3d cluster create branchpickingsystem --agents 2 --wait
+        k3d cluster list
         kubectl get nodes
 
-    # -------------------------
-    # Build & import Docker images
-    # -------------------------
     - name: Build & import Docker images
       run: |
-        SERVICES=(
-          config-server eureka-server order-service analytics-service
-          payment-service product-service notification-service
-          user-registration consolidation-service api-gateway
+        $SERVICES = @(
+          "config-server","eureka-server","order-service","analytics-service",
+          "payment-service","product-service","notification-service",
+          "user-registration","consolidation-service","api-gateway"
         )
 
-        MODULES=(
-          ConfigServerApp EurekaServerApp OrderServiceApplication
-          AnalyticsService PaymentApplication ProductServiceApplication
-          NotificationService UserRegistration ConsolidationService
-          API-Gateway
+        $MODULES = @(
+          "ConfigServerApp","EurekaServerApp","OrderServiceApplication",
+          "AnalyticsService","PaymentApplication","ProductServiceApplication",
+          "NotificationService","UserRegistration","ConsolidationService",
+          "API-Gateway"
         )
 
-        for i in "${!SERVICES[@]}"; do
-          docker build -t ${SERVICES[$i]}:ci ./${MODULES[$i]}
-          k3d image import ${SERVICES[$i]}:ci -c branchpickingsystem
-        done
+        for ($i=0; $i -lt $SERVICES.Length; $i++) {
+          docker build -t "$($SERVICES[$i]):ci" ".\$($MODULES[$i])"
+          k3d image import "$($SERVICES[$i]):ci" -c branchpickingsystem
+        }
 
-    # -------------------------
-    # Deploy manifests
-    # -------------------------
     - name: Deploy to k3d
       run: kubectl apply -f k8s/
 
-    # -------------------------
-    # Wait for Eureka
-    # -------------------------
     - name: Wait for Eureka
       run: kubectl rollout status deployment/eureka-server --timeout=180s
 
-    # -------------------------
-    # PROOF: Cluster state
-    # -------------------------
-    - name: Pods
-      run: kubectl get pods -o wide
-
-    - name: Deployments
-      run: kubectl get deployments
-
-    - name: Services
-      run: kubectl get svc
-
-    - name: Eureka logs
-      run: kubectl logs deploy/eureka-server --tail=50
+    - name: Proof
+      run: |
+        kubectl get pods -o wide
+        kubectl get svc
