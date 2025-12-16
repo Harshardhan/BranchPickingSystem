@@ -26,20 +26,33 @@ jobs:
         kubectl version --client
         k3d version
 
-    # ❌ DO NOT DELETE CLUSTER IN CD
     - name: Ensure k3d cluster exists
       run: |
         k3d cluster list
         kubectl get nodes
 
-    - name: Build & import Docker images
+    # ------------------------------
+    # ✅ Create local registry if not exists
+    # ------------------------------
+    - name: Create local registry
+      run: |
+        $regName = "registry.localhost"
+        $regPort = "5000"
+        if (-not (k3d registry list | Select-String $regName)) {
+          k3d registry create $regName:$regPort
+        }
+
+    # ------------------------------
+    # ✅ Build & push Docker images to registry
+    # ------------------------------
+    - name: Build & push images
       run: |
         $SERVICES = @(
           "config-server","eureka-server","order-service","analytics-service",
           "payment-service","product-service","notification-service",
           "user-registration","consolidation-service","api-gateway"
         )
-
+        
         $MODULES = @(
           "ConfigServerApp","EurekaServerApp","OrderServiceApplication",
           "AnalyticsService","PaymentApplication","ProductServiceApplication",
@@ -47,11 +60,22 @@ jobs:
           "API-Gateway"
         )
 
+        $registry = "registry.localhost:5000"
+
         for ($i=0; $i -lt $SERVICES.Length; $i++) {
-          docker build -t "$($SERVICES[$i]):ci" ".\$($MODULES[$i])"
-          k3d image import "$($SERVICES[$i]):ci" -c branchpickingsystem
+          $imageName = "$registry/$($SERVICES[$i]):ci"
+          $modulePath = ".\$($MODULES[$i])"
+
+          Write-Host "Building image $imageName from $modulePath"
+          docker build -t $imageName $modulePath
+
+          Write-Host "Pushing image $imageName to local registry"
+          docker push $imageName
         }
 
+    # ------------------------------
+    # ✅ Deploy to k3d using registry images
+    # ------------------------------
     - name: Deploy to k3d
       run: kubectl apply -f k8s/
 
@@ -64,11 +88,10 @@ jobs:
         kubectl get svc
 
     # ------------------------------
-    # ✅ New Step: Test Internet Access
+    # ✅ Optional: Test Internet Access from Cluster
     # ------------------------------
     - name: Test Internet Access from Cluster
       run: |
-        echo "Testing connectivity from a temporary pod..."
         kubectl run test-internet --rm -i --tty --image=alpine -- sh -c "
           apk add --no-cache curl;
           echo 'Testing YouTube...';
