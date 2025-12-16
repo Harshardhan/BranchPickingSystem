@@ -47,7 +47,7 @@ jobs:
         kubectl get nodes
 
     # -------------------------
-    # Create local registry and build/push images
+    # Create local registry & build/push images
     # -------------------------
     - name: Build & Push Docker Images to Local Registry
       shell: powershell
@@ -58,10 +58,10 @@ jobs:
 
         # Create registry if not exists
         if (-not (k3d registry list | Select-String $regName)) {
-            Write-Host "Creating local registry $registryFull..."
-            k3d registry create $registryFull
+            Write-Host "Creating local registry $regName on port $regPort..."
+            k3d registry create $regName --port $regPort
         } else {
-            Write-Host "Local registry $registryFull already exists."
+            Write-Host "Local registry $regName already exists."
         }
 
         # Define services and modules
@@ -99,7 +99,7 @@ jobs:
     - name: Wait for Eureka
       run: kubectl rollout status deployment/eureka-server --timeout=180s
 
-    - name: Proof
+    - name: Verify Pods & Services
       run: |
         kubectl get pods -o wide
         kubectl get svc
