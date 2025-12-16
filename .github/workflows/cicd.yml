@@ -62,3 +62,17 @@ jobs:
       run: |
         kubectl get pods -o wide
         kubectl get svc
+
+    # ------------------------------
+    # ✅ New Step: Test Internet Access
+    # ------------------------------
+    - name: Test Internet Access from Cluster
+      run: |
+        echo "Testing connectivity from a temporary pod..."
+        kubectl run test-internet --rm -i --tty --image=alpine -- sh -c "
+          apk add --no-cache curl;
+          echo 'Testing YouTube...';
+          curl -I https://www.youtube.com;
+          echo 'Testing Google...';
+          curl -I https://www.google.com
+        "
