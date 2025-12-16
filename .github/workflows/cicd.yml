@@ -39,7 +39,7 @@ jobs:
         k3d version
 
     # -------------------------
-    # Setup k3d cluster with local registry (PowerShell safe)
+    # Setup k3d cluster with local registry
     # -------------------------
     - name: Setup k3d cluster and registry
       shell: powershell
@@ -55,10 +55,10 @@ jobs:
         # Create local registry
         k3d registry create $regName --port $regPort
 
-        # Prepare full registry string
+        # Full registry string
         $registryFull = "${regName}:${regPort}"
 
-        # Create cluster with registry linked (PowerShell safe)
+        # Create cluster with registry linked
         k3d cluster create $clusterName --registry-use $registryFull
 
         # Verify cluster
@@ -100,22 +100,45 @@ jobs:
         }
 
     # -------------------------
-    # Deploy Infrastructure Services (Eureka, Config, Redis, Kafka, MySQL)
+    # Deploy Infrastructure Services
     # -------------------------
     - name: Deploy Infrastructure Services
+      shell: powershell
       run: |
-        kubectl apply -f k8s/infra/redis.yaml
-        kubectl apply -f k8s/infra/kafka.yaml
-        kubectl apply -f k8s/config-server.yaml
-        kubectl apply -f k8s/eureka-server.yaml
-        kubectl apply -f k8s/mysql.yaml
+        # Infra
+        kubectl apply -f k8s/infra/redis-deployment.yml
+        kubectl apply -f k8s/infra/kafka.yml
+        kubectl apply -f k8s/infra/zookeeper.yml
+        kubectl apply -f k8s/infra/rabbitmq.yml
+        kubectl apply -f k8s/infra/elastic-search.yml
+        kubectl apply -f k8s/infra/kibana.yml
+        kubectl apply -f k8s/infra/logstash.yml
+        kubectl apply -f k8s/infra/logstash-pipeline-cm.yml
+        kubectl apply -f k8s/infra/grafana.yml
+        kubectl apply -f k8s/infra/prometheus.yml
+        kubectl apply -f k8s/infra/prometheus-configmap.yml
+        kubectl apply -f k8s/infra/zipkin.yml
 
-        # Wait for infra pods to be ready
+        # Config Server & Eureka
+        kubectl apply -f k8s/config-server-deployment.yml
+        kubectl apply -f k8s/eureka-server-deployment.yml
+
+        # MySQL (all database deployments)
+        kubectl apply -f k8s/mysql/
+
+        # Wait for infra pods
         kubectl rollout status deployment/config-server --timeout=300s
         kubectl rollout status deployment/eureka-server --timeout=300s
         kubectl rollout status statefulset/redis --timeout=300s
         kubectl rollout status statefulset/kafka --timeout=300s
-        kubectl rollout status deployment/mysql --timeout=300s
+        kubectl rollout status statefulset/zookeeper --timeout=300s
+        kubectl rollout status deployment/mysql-analytics --timeout=300s
+        kubectl rollout status deployment/mysql-order --timeout=300s
+        kubectl rollout status deployment/mysql-payment --timeout=300s
+        kubectl rollout status deployment/mysql-product --timeout=300s
+        kubectl rollout status deployment/mysql-notification --timeout=300s
+        kubectl rollout status deployment/mysql-user --timeout=300s
+        kubectl rollout status deployment/mysql-consolidation --timeout=300s
 
     # -------------------------
     # Deploy Microservices Sequentially
@@ -124,9 +147,9 @@ jobs:
       shell: powershell
       run: |
         $microservices = @(
-          "order-service",
-          "payment-service",
-          "product-service",
+          "order-service-application",
+          "payment-application",
+          "product-service-application",
           "analytics-service",
           "notification-service",
           "user-registration",
@@ -136,7 +159,7 @@ jobs:
 
         foreach ($svc in $microservices) {
           Write-Host "Deploying $svc..."
-          kubectl apply -f "k8s/$svc.yaml"
+          kubectl apply -f "k8s/$svc-deployment.yml"
           kubectl rollout status deployment/$svc --timeout=300s
         }
 
