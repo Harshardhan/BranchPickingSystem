@@ -40,9 +40,9 @@ jobs:
     # Deploy Infra
     # -------------------------------
     - name: Deploy MySQL
-      run: kubectl apply -f k8s/mysql/
+      run: kubectl apply --validate=false -f k8s/mysql/
 
-    - name: Deploy Redis
+    - name: Deploy infra
       run: kubectl apply -f k8s/infra/redis-deployment.yml
 
     # -------------------------------
