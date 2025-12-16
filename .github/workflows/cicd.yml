@@ -9,50 +9,68 @@ jobs:
     runs-on: self-hosted
 
     steps:
+    # -------------------------
+    # Checkout
+    # -------------------------
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    # -------------------------
+    # Verify Java & Maven
+    # -------------------------
     - name: Verify Java & Maven
       run: |
         java -version
         mvn -v
 
+    # -------------------------
+    # Build Maven modules
+    # -------------------------
     - name: Build Maven modules
       run: mvn clean package -DskipTests
 
+    # -------------------------
+    # Verify tools
+    # -------------------------
     - name: Verify tools
       run: |
         docker --version
         kubectl version --client
         k3d version
 
+    # -------------------------
+    # Ensure k3d cluster exists
+    # -------------------------
     - name: Ensure k3d cluster exists
       run: |
         k3d cluster list
         kubectl get nodes
 
-    # ------------------------------
-    # ✅ Create local registry if not exists
-    # ------------------------------
-    - name: Create local registry
+    # -------------------------
+    # Create local registry and build/push images
+    # -------------------------
+    - name: Build & Push Docker Images to Local Registry
+      shell: powershell
       run: |
         $regName = "registry.localhost"
         $regPort = "5000"
+        $registryFull = "${regName}:${regPort}"
+
+        # Create registry if not exists
         if (-not (k3d registry list | Select-String $regName)) {
-          k3d registry create $regName:$regPort
+            Write-Host "Creating local registry $registryFull..."
+            k3d registry create $registryFull
+        } else {
+            Write-Host "Local registry $registryFull already exists."
         }
 
-    # ------------------------------
-    # ✅ Build & push Docker images to registry
-    # ------------------------------
-    - name: Build & push images
-      run: |
+        # Define services and modules
         $SERVICES = @(
           "config-server","eureka-server","order-service","analytics-service",
           "payment-service","product-service","notification-service",
           "user-registration","consolidation-service","api-gateway"
         )
-        
+
         $MODULES = @(
           "ConfigServerApp","EurekaServerApp","OrderServiceApplication",
           "AnalyticsService","PaymentApplication","ProductServiceApplication",
@@ -60,22 +78,21 @@ jobs:
           "API-Gateway"
         )
 
-        $registry = "registry.localhost:5000"
-
+        # Build & push images
         for ($i=0; $i -lt $SERVICES.Length; $i++) {
-          $imageName = "$registry/$($SERVICES[$i]):ci"
-          $modulePath = ".\$($MODULES[$i])"
+            $imageName = "${registryFull}/${SERVICES[$i]}:ci"
+            $modulePath = ".\$($MODULES[$i])"
 
-          Write-Host "Building image $imageName from $modulePath"
-          docker build -t $imageName $modulePath
+            Write-Host "Building image $imageName from path $modulePath..."
+            docker build -t $imageName $modulePath
 
-          Write-Host "Pushing image $imageName to local registry"
-          docker push $imageName
+            Write-Host "Pushing image $imageName to local registry..."
+            docker push $imageName
         }
 
-    # ------------------------------
-    # ✅ Deploy to k3d using registry images
-    # ------------------------------
+    # -------------------------
+    # Deploy to k3d
+    # -------------------------
     - name: Deploy to k3d
       run: kubectl apply -f k8s/
 
@@ -87,9 +104,9 @@ jobs:
         kubectl get pods -o wide
         kubectl get svc
 
-    # ------------------------------
-    # ✅ Optional: Test Internet Access from Cluster
-    # ------------------------------
+    # -------------------------
+    # Test Internet Connectivity
+    # -------------------------
     - name: Test Internet Access from Cluster
       run: |
         kubectl run test-internet --rm -i --tty --image=alpine -- sh -c "
