@@ -63,19 +63,19 @@ jobs:
     # -------------------------
     - name: Deploy Eureka Server
       run: |
-        kubectl apply -f k8s/eureka-server.yml
         kubectl apply -f k8s/eureka-server-deployment.yml
+        kubectl apply -f k8s/eureka-server.yml
 
     - name: Wait for Eureka Server
-      run: kubectl rollout status deployment/eureka-server --timeout=600s
+      run: kubectl rollout status deployment/eureka-server 
 
     # -------------------------
     # CONFIG SERVER
     # -------------------------
     - name: Deploy Config Server
       run: |
-        kubectl apply -f k8s/config-server.yml
         kubectl apply -f k8s/config-server-deployment.yml
+        kubectl apply -f k8s/config-server.yml
 
     - name: Wait for Config Server
       run: kubectl rollout status deployment/config-server --timeout=180s
@@ -86,8 +86,8 @@ jobs:
     # -------------------------
     - name: Deploy API Gateway
       run: |
-        kubectl apply -f k8s/api-gateway.yml
         kubectl apply -f k8s/api-gateway-deployment.yml
+        kubectl apply -f k8s/api-gateway.yml
 
     - name: Wait for API Gateway
       run: kubectl rollout status deployment/api-gateway --timeout=180s
@@ -97,8 +97,8 @@ jobs:
     # -------------------------
     - name: Deploy User Registration Service
       run: |
-        kubectl apply -f k8s/user-registration.yml
         kubectl apply -f k8s/user-registration-deployment.yml
+        kubectl apply -f k8s/user-registration.yml
 
     - name: Wait for User Service
       run: kubectl rollout status deployment/user-registration --timeout=180s
@@ -108,8 +108,8 @@ jobs:
     # -------------------------
     - name: Deploy Product Service
       run: |
+        kubectl apply -f k8s/product-service-application-application.yml
         kubectl apply -f k8s/product-service-application.yml
-        kubectl apply -f k8s/product-service-application-deployment.yml
 
     - name: Wait for Product Service
       run: kubectl rollout status deployment/product-service-application --timeout=180s
