@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: eureka-server
-          image: eureka-server:ci
+          image: harsha79/eureka-server:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8761
