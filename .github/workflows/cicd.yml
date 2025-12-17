@@ -49,6 +49,15 @@ jobs:
         kubectl get nodes
 
     # -------------------------
+    # CONFIG
+    # -------------------------
+    - name: Deploy Config
+      run: |
+        kubectl apply -f k8s/app-config.yml
+        kubectl apply -f k8s/app-secret.yml  
+
+
+    # -------------------------
     # INFRA
     # -------------------------
     - name: Deploy Redis
@@ -60,13 +69,6 @@ jobs:
         kubectl apply -f k8s/mysql/mysql-user.yml
         kubectl apply -f k8s/mysql/mysql-product.yml
 
-    # -------------------------
-    # CONFIG
-    # -------------------------
-    - name: Deploy Config
-      run: |
-        kubectl apply -f k8s/app-config.yml
-        kubectl apply -f k8s/app-secret.yml  
     # -------------------------
     # EUREKA
     # -------------------------
