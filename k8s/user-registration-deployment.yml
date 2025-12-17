@@ -16,8 +16,16 @@ spec:
         - name: user-registration
           image: harsha79/user-registration:latest
           imagePullPolicy: IfNotPresent
+
           ports:
             - containerPort: 8083
+
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secret
+
           resources:
             requests:
               memory: "256Mi"
