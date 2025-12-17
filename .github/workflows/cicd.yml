@@ -55,7 +55,10 @@ jobs:
       run: kubectl apply -f k8s/infra/redis-deployment.yml
 
     - name: Deploy MySQL
-      run: kubectl apply -f k8s/mysql/
+      run: |
+        kubectl apply -f k8s/mysql-deployment.yml
+        kubectl apply -f k8s/mysql/mysql-user.yml
+        kubectl apply -f k8s/mysql/mysql-product.yml
 
     # -------------------------
     # CONFIG
