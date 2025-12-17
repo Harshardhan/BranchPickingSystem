@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: user-registration
-          image: user-registration:ci
+          image: harsha79/user-registration:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8083
