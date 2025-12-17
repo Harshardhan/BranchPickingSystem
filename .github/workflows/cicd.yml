@@ -1,80 +1,62 @@
-name: Free Real CD (k3d)
+name: CD – Deploy Selected Services to Kubernetes
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
-  cd:
-    runs-on: self-hosted
+  deploy:
+    runs-on: self-hosted   # you are using self-hosted runner
 
     steps:
-    - name: Checkout
+    - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Build Maven
-      run: mvn clean package -DskipTests
-
-    # -------------------------------
-    # Build & Push Images
-    # -------------------------------
-    - name: Build and Push Images
-      shell: powershell
+    - name: Verify kubectl access
       run: |
-        $registry = "registry.localhost:5000"
+        kubectl version --client
+        kubectl get nodes
 
-        $services = @{
-          "eureka-server" = "EurekaServerApp"
-          "config-server" = "ConfigServerApp"
-          "api-gateway" = "API-Gateway"
-          "user-service" = "UserRegistration"
-          "product-service" = "ProductServiceApplication"
-        }
-
-        foreach ($s in $services.Keys) {
-          docker build -t "$registry/$s:ci" ".\$($services[$s])"
-          docker push "$registry/$s:ci"
-        }
-
-    # -------------------------------
-    # Deploy Infra
-    # -------------------------------
-    - name: Deploy MySQL
-      run: kubectl apply --validate=false -f k8s/mysql/
-
-    - name: Deploy infra
+    # -----------------------------
+    # INFRA
+    # -----------------------------
+    - name: Deploy Redis
       run: kubectl apply -f k8s/infra/redis-deployment.yml
 
-    # -------------------------------
-    # Core Services
-    # -------------------------------
-    - name: Deploy Eureka
-      run: |
-        kubectl apply -f k8s/eureka-server-deployment.yml
-        kubectl rollout status deployment/eureka-server --timeout=300s
+    - name: Deploy MySQL
+      run: kubectl apply -f k8s/mysql/
 
+    # -----------------------------
+    # CONFIG & DISCOVERY
+    # -----------------------------
     - name: Deploy Config Server
       run: |
+        kubectl apply -f k8s/config-server.yml
         kubectl apply -f k8s/config-server-deployment.yml
-        kubectl rollout status deployment/config-server --timeout=300s
 
-    # -------------------------------
-    # API Gateway
-    # -------------------------------
+    - name: Deploy Eureka Server
+      run: |
+        kubectl apply -f k8s/eureka-server.yml
+        kubectl apply -f k8s/eureka-server-deployment.yml
+
+    # -----------------------------
+    # API GATEWAY
+    # -----------------------------
     - name: Deploy API Gateway
       run: |
+        kubectl apply -f k8s/api-gateway.yml
         kubectl apply -f k8s/api-gateway-deployment.yml
-        kubectl rollout status deployment/api-gateway --timeout=300s
 
-    # -------------------------------
-    # Business Services
-    # -------------------------------
-    - name: Deploy User Service
+    # -----------------------------
+    # BUSINESS SERVICES
+    # -----------------------------
+    - name: Deploy User Registration Service
       run: |
+        kubectl apply -f k8s/user-registration.yml
         kubectl apply -f k8s/user-registration-deployment.yml
-        kubectl rollout status deployment/user-registration --timeout=300s
 
     - name: Deploy Product Service
       run: |
+        kubectl apply -f k8s/product-service-application.yml
         kubectl apply -f k8s/product-service-application-deployment.yml
-        kubectl rollout status deployment/product-service-application --timeout=300s
