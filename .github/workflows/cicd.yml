@@ -33,7 +33,7 @@ jobs:
           Write-Host "Creating k3d cluster..."
           k3d cluster create $cluster `
             --api-port 6550 `
-            --port "8080:80@loadbalancer" `
+            --port "8088:80@loadbalancer" `
             --k3s-arg "--disable=traefik@server:0"
         }
         else {
