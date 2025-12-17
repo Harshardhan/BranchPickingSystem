@@ -118,7 +118,7 @@ jobs:
         kubectl apply -f k8s/product-service-application.yml
 
     - name: Wait for Product Service
-      run: kubectl rollout status deployment/product-service-application 
+      run: kubectl rollout status deployment/product-service
 
     # -------------------------
     # FINAL STATUS
