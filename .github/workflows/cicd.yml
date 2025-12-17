@@ -67,7 +67,7 @@ jobs:
         kubectl apply -f k8s/eureka-server-deployment.yml
 
     - name: Wait for Eureka Server
-      run: kubectl rollout status deployment/eureka-server --timeout=180s
+      run: kubectl rollout status deployment/eureka-server --timeout=600s
 
     # -------------------------
     # CONFIG SERVER
