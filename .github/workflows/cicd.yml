@@ -57,6 +57,18 @@ jobs:
     - name: Deploy MySQL
       run: kubectl apply -f k8s/mysql/
 
+    
+    # -------------------------
+    # EUREKA
+    # -------------------------
+    - name: Deploy Eureka Server
+      run: |
+        kubectl apply -f k8s/eureka-server.yml
+        kubectl apply -f k8s/eureka-server-deployment.yml
+
+    - name: Wait for Eureka Server
+      run: kubectl rollout status deployment/eureka-server --timeout=180s
+
     # -------------------------
     # CONFIG SERVER
     # -------------------------
@@ -68,16 +80,6 @@ jobs:
     - name: Wait for Config Server
       run: kubectl rollout status deployment/config-server --timeout=180s
 
-    # -------------------------
-    # EUREKA
-    # -------------------------
-    - name: Deploy Eureka Server
-      run: |
-        kubectl apply -f k8s/eureka-server.yml
-        kubectl apply -f k8s/eureka-server-deployment.yml
-
-    - name: Wait for Eureka Server
-      run: kubectl rollout status deployment/eureka-server --timeout=180s
 
     # -------------------------
     # API GATEWAY
