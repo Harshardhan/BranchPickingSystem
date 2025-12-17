@@ -114,7 +114,7 @@ jobs:
     # -------------------------
     - name: Deploy Product Service
       run: |
-        kubectl apply -f k8s/product-service-application-application.yml
+        kubectl apply -f k8s/product-service-application-deployment.yml
         kubectl apply -f k8s/product-service-application.yml
 
     - name: Wait for Product Service
