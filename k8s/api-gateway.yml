@@ -3,10 +3,9 @@ kind: Service
 metadata:
   name: api-gateway
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: api-gateway
   ports:
     - port: 80          # service port inside cluster
       targetPort: 80    # port inside container
-      nodePort: 30080   # external port on localhost
