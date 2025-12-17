@@ -1,4 +1,4 @@
-name: CD – Deploy to k3d (BranchPickingSystem)
+name: CD – k3d Auto Cluster + Deploy
 
 on:
   push:
@@ -17,12 +17,35 @@ jobs:
       uses: actions/checkout@v4
 
     # -------------------------
-    # Force k3d context
+    # Ensure k3d exists
     # -------------------------
-    - name: Use k3d cluster
+    - name: Verify k3d installation
+      run: |
+        k3d version
+
+    - name: Create k3d cluster if not exists
+      shell: powershell
+      run: |
+        $cluster="branchpickingsystem"
+        $exists = k3d cluster list | Select-String $cluster
+
+        if (-not $exists) {
+          Write-Host "Creating k3d cluster..."
+          k3d cluster create $cluster `
+            --api-port 6550 `
+            --port "8080:80@loadbalancer" `
+            --k3s-arg "--disable=traefik@server:0"
+        }
+        else {
+          Write-Host "k3d cluster already exists"
+        }
+
+    # -------------------------
+    # Use k3d context
+    # -------------------------
+    - name: Use k3d context
       run: |
         kubectl config use-context k3d-branchpickingsystem
-        kubectl config current-context
         kubectl get nodes
 
     # -------------------------
@@ -92,5 +115,5 @@ jobs:
     # -------------------------
     # FINAL STATUS
     # -------------------------
-    - name: Show running pods
+    - name: Show pods
       run: kubectl get pods
