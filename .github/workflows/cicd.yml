@@ -1,4 +1,4 @@
-name: CD – Deploy Selected Services to Kubernetes
+name: CD – Deploy to k3d (BranchPickingSystem)
 
 on:
   push:
@@ -7,56 +7,90 @@ on:
 
 jobs:
   deploy:
-    runs-on: self-hosted   # you are using self-hosted runner
+    runs-on: self-hosted
 
     steps:
-    - name: Checkout code
+    # -------------------------
+    # Checkout
+    # -------------------------
+    - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Verify kubectl access
+    # -------------------------
+    # Force k3d context
+    # -------------------------
+    - name: Use k3d cluster
       run: |
-        kubectl version --client
+        kubectl config use-context k3d-branchpickingsystem
+        kubectl config current-context
         kubectl get nodes
 
-    # -----------------------------
+    # -------------------------
     # INFRA
-    # -----------------------------
+    # -------------------------
     - name: Deploy Redis
       run: kubectl apply -f k8s/infra/redis-deployment.yml
 
     - name: Deploy MySQL
       run: kubectl apply -f k8s/mysql/
 
-    # -----------------------------
-    # CONFIG & DISCOVERY
-    # -----------------------------
+    # -------------------------
+    # CONFIG SERVER
+    # -------------------------
     - name: Deploy Config Server
       run: |
         kubectl apply -f k8s/config-server.yml
         kubectl apply -f k8s/config-server-deployment.yml
 
+    - name: Wait for Config Server
+      run: kubectl rollout status deployment/config-server --timeout=180s
+
+    # -------------------------
+    # EUREKA
+    # -------------------------
     - name: Deploy Eureka Server
       run: |
         kubectl apply -f k8s/eureka-server.yml
         kubectl apply -f k8s/eureka-server-deployment.yml
 
-    # -----------------------------
+    - name: Wait for Eureka Server
+      run: kubectl rollout status deployment/eureka-server --timeout=180s
+
+    # -------------------------
     # API GATEWAY
-    # -----------------------------
+    # -------------------------
     - name: Deploy API Gateway
       run: |
         kubectl apply -f k8s/api-gateway.yml
         kubectl apply -f k8s/api-gateway-deployment.yml
 
-    # -----------------------------
-    # BUSINESS SERVICES
-    # -----------------------------
+    - name: Wait for API Gateway
+      run: kubectl rollout status deployment/api-gateway --timeout=180s
+
+    # -------------------------
+    # USER SERVICE
+    # -------------------------
     - name: Deploy User Registration Service
       run: |
         kubectl apply -f k8s/user-registration.yml
         kubectl apply -f k8s/user-registration-deployment.yml
 
+    - name: Wait for User Service
+      run: kubectl rollout status deployment/user-registration --timeout=180s
+
+    # -------------------------
+    # PRODUCT SERVICE
+    # -------------------------
     - name: Deploy Product Service
       run: |
         kubectl apply -f k8s/product-service-application.yml
         kubectl apply -f k8s/product-service-application-deployment.yml
+
+    - name: Wait for Product Service
+      run: kubectl rollout status deployment/product-service-application --timeout=180s
+
+    # -------------------------
+    # FINAL STATUS
+    # -------------------------
+    - name: Show running pods
+      run: kubectl get pods
