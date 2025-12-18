@@ -15,14 +15,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # -------------------------
-    # VERIFY CLUSTER
-    # -------------------------
-    - name: Verify cluster connectivity
-      run: |
-        kubectl config use-context k3d-branchpickingsystem
-        kubectl get nodes
-
+    
     # -------------------------
     # CONFIG MAPS & SECRETS
     # -------------------------
