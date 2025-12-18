@@ -27,11 +27,6 @@ jobs:
         kubectl get nodes
 
       
-    - name: Use k3d context
-      run: |
-        kubectl config use-context k3d-branchpickingsystem
-        kubectl get nodes
-
     # -------------------------
     # CONFIG MAPS & SECRETS
     # -------------------------
