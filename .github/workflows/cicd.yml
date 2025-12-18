@@ -21,22 +21,12 @@ jobs:
     # -------------------------
     # Create cluster (ONLY FOR LEARNING)
     # -------------------------
-    - name: Ensure k3d cluster exists
-      shell: powershell
+    - name: Verify cluster connectivity
       run: |
-        $cluster="branchpickingsystem"
-        $exists = k3d cluster list | Select-String $cluster
+        kubectl config use-context k3d-branchpickingsystem
+        kubectl get nodes
 
-        if (-not $exists) {
-          Write-Host "Creating k3d cluster..."
-          k3d cluster create $cluster `
-            --api-port 6550 `
-            --port "8088:80@loadbalancer" `
-            --k3s-arg "--disable=traefik@server:0"
-        } else {
-          Write-Host "Cluster already exists"
-        }
-
+      
     - name: Use k3d context
       run: |
         kubectl config use-context k3d-branchpickingsystem
