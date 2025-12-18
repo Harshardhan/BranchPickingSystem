@@ -1,0 +1,28 @@
+name: Blue-Green Switch (Config Server)
+
+on:
+  workflow_dispatch:
+    inputs:
+      color:
+        description: "Target color (blue or green)"
+        required: true
+        default: "green"
+
+jobs:
+  switch:
+    runs-on: self-hosted
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Switch traffic
+      run: |
+        echo "Switching traffic to ${{ github.event.inputs.color }}"
+
+        kubectl patch service config-server \
+          --type='merge' \
+          -p "{\"spec\":{\"selector\":{\"app\":\"config-server\",\"color\":\"${{ github.event.inputs.color }}\"}}}"
+
+    - name: Verify endpoints
+      run: kubectl get endpoints config-server

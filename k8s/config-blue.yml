@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-server-blue
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-server
+      color: blue
+  template:
+    metadata:
+      labels:
+        app: config-server
+        color: blue
+    spec:
+      containers:
+        - name: config-server
+          image: harsha79/config-server:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8888
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

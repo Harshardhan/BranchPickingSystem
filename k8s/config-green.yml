@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-server-green
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-server
+      color: green
+  template:
+    metadata:
+      labels:
+        app: config-server
+        color: green
+    spec:
+      containers:
+        - name: eureka
+          image: harsha79/config-server:v2  # later: :v2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8888
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eureka-green
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eureka
+      color: green
+  template:
+    metadata:
+      labels:
+        app: eureka
+        color: green
+    spec:
+      containers:
+        - name: eureka
+          image: harsha79/eureka-server:v2  # later: :v2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8761
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

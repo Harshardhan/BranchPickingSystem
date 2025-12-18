@@ -6,6 +6,7 @@ spec:
   type: ClusterIP
   selector:
     app: api-gateway
+    color: blue
   ports:
     - port: 80          # service port inside cluster
       targetPort: 80    # port inside container

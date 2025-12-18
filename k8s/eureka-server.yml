@@ -5,7 +5,8 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    app: eureka-server
+    app: eureka
+    color: blue
   ports:
     - port: 8761
       targetPort: 8761

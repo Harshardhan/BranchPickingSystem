@@ -6,6 +6,7 @@ spec:
   type: ClusterIP
   selector:
     app: config-server
+    color: blue
   ports:
     - port: 8888
       targetPort: 8888
