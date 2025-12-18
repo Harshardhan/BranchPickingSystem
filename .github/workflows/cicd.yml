@@ -2,28 +2,26 @@ name: CD – k3d Auto Cluster + Deploy
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   deploy:
     runs-on: self-hosted
 
     steps:
-    # -------------------------
-    # Checkout
-    # -------------------------
     - name: Checkout repository
       uses: actions/checkout@v4
 
     # -------------------------
-    # Ensure k3d exists
+    # Verify k3d
     # -------------------------
     - name: Verify k3d installation
-      run: |
-        k3d version
+      run: k3d version
 
-    - name: Create k3d cluster if not exists
+    # -------------------------
+    # Create cluster (ONLY FOR LEARNING)
+    # -------------------------
+    - name: Ensure k3d cluster exists
       shell: powershell
       run: |
         $cluster="branchpickingsystem"
@@ -35,50 +33,46 @@ jobs:
             --api-port 6550 `
             --port "8088:80@loadbalancer" `
             --k3s-arg "--disable=traefik@server:0"
-        }
-        else {
-          Write-Host "k3d cluster already exists"
+        } else {
+          Write-Host "Cluster already exists"
         }
 
-    # -------------------------
-    # Use k3d context
-    # -------------------------
     - name: Use k3d context
       run: |
         kubectl config use-context k3d-branchpickingsystem
         kubectl get nodes
 
     # -------------------------
-    # CONFIG
+    # CONFIG MAPS & SECRETS
     # -------------------------
     - name: Deploy Config
       run: |
         kubectl apply -f k8s/app-config.yml
         kubectl apply -f k8s/app-secret.yml  
 
-
     # -------------------------
     # INFRA
     # -------------------------
     - name: Deploy Redis
-      run: kubectl apply -f k8s/infra/redis-deployment.yml
+      run: |
+        kubectl apply -f k8s/infra/redis-deployment.yml
+        kubectl rollout status deployment/redis --timeout=180s
 
     - name: Deploy MySQL
       run: |
         kubectl apply -f k8s/mysql-deployment.yml
+        kubectl rollout status deployment/mysql --timeout=300s
         kubectl apply -f k8s/mysql/mysql-user.yml
         kubectl apply -f k8s/mysql/mysql-product.yml
 
     # -------------------------
     # EUREKA
     # -------------------------
-    - name: Deploy Eureka Server
+    - name: Deploy Eureka
       run: |
         kubectl apply -f k8s/eureka-server-deployment.yml
         kubectl apply -f k8s/eureka-server.yml
-
-    - name: Wait for Eureka Server
-      run: kubectl rollout status deployment/eureka-server 
+        kubectl rollout status deployment/eureka-server --timeout=300s
 
     # -------------------------
     # CONFIG SERVER
@@ -87,10 +81,7 @@ jobs:
       run: |
         kubectl apply -f k8s/config-server-deployment.yml
         kubectl apply -f k8s/config-server.yml
-
-    - name: Wait for Config Server
-      run: kubectl rollout status deployment/config-server 
-
+        kubectl rollout status deployment/config-server --timeout=300s
 
     # -------------------------
     # API GATEWAY
@@ -99,20 +90,16 @@ jobs:
       run: |
         kubectl apply -f k8s/api-gateway-deployment.yml
         kubectl apply -f k8s/api-gateway.yml
-
-    - name: Wait for API Gateway
-      run: kubectl rollout status deployment/api-gateway 
+        kubectl rollout status deployment/api-gateway --timeout=300s
 
     # -------------------------
     # USER SERVICE
     # -------------------------
-    - name: Deploy User Registration Service
+    - name: Deploy User Service
       run: |
         kubectl apply -f k8s/user-registration-deployment.yml
         kubectl apply -f k8s/user-registration.yml
-
-    - name: Wait for User Service
-      run: kubectl rollout status deployment/user-registration 
+        kubectl rollout status deployment/user-registration --timeout=300s
 
     # -------------------------
     # PRODUCT SERVICE
@@ -121,12 +108,7 @@ jobs:
       run: |
         kubectl apply -f k8s/product-service-application-deployment.yml
         kubectl apply -f k8s/product-service-application.yml
+        kubectl rollout status deployment/product-service --timeout=300s
 
-    - name: Wait for Product Service
-      run: kubectl rollout status deployment/product-service
-
-    # -------------------------
-    # FINAL STATUS
-    # -------------------------
-    - name: Show pods
+    - name: Final status
       run: kubectl get pods
