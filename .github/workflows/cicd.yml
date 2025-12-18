@@ -1,4 +1,4 @@
-name: CD – k3d Auto Cluster + Deploy
+name: CD – k3d Deploy (Sequential & Stable)
 
 on:
   push:
@@ -9,28 +9,24 @@ jobs:
     runs-on: self-hosted
 
     steps:
+    # -------------------------
+    # CHECKOUT
+    # -------------------------
     - name: Checkout repository
       uses: actions/checkout@v4
 
     # -------------------------
-    # Verify k3d
-    # -------------------------
-    - name: Verify k3d installation
-      run: k3d version
-
-    # -------------------------
-    # Create cluster (ONLY FOR LEARNING)
+    # VERIFY CLUSTER
     # -------------------------
     - name: Verify cluster connectivity
       run: |
         kubectl config use-context k3d-branchpickingsystem
         kubectl get nodes
 
-      
     # -------------------------
     # CONFIG MAPS & SECRETS
     # -------------------------
-    - name: Deploy Config
+    - name: Deploy ConfigMaps & Secrets
       run: |
         kubectl apply -f k8s/app-config.yml
         kubectl apply -f k8s/app-secret.yml  
@@ -53,7 +49,7 @@ jobs:
     # -------------------------
     # EUREKA
     # -------------------------
-    - name: Deploy Eureka
+    - name: Deploy Eureka Server
       run: |
         kubectl apply -f k8s/eureka-server-deployment.yml
         kubectl apply -f k8s/eureka-server.yml
@@ -95,5 +91,8 @@ jobs:
         kubectl apply -f k8s/product-service-application.yml
         kubectl rollout status deployment/product-service --timeout=300s
 
+    # -------------------------
+    # FINAL STATUS
+    # -------------------------
     - name: Final status
       run: kubectl get pods
