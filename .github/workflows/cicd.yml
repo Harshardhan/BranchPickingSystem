@@ -49,7 +49,7 @@ jobs:
     # BUILD & PUSH MICROSERVICES
     # =============================
 
-    - name: Order Service
+    - name: Build & Push Order Service
       run: |
         docker build -t ${{ secrets.DOCKER_USERNAME }}/order-service:${IMAGE_TAG} ./OrderServiceApplication
         docker push ${{ secrets.DOCKER_USERNAME }}/order-service:${IMAGE_TAG}
