@@ -1,4 +1,4 @@
-name: CD – k3d Deploy (Sequential & Stable)
+name: CI with k3d - BranchPickingSystem
 
 on:
   push:
@@ -16,76 +16,8 @@ jobs:
       uses: actions/checkout@v4
 
     
-    # -------------------------
-    # CONFIG MAPS & SECRETS
-    # -------------------------
-    - name: Deploy ConfigMaps & Secrets
-      run: |
-        kubectl apply -f k8s/app-config.yml
-        kubectl apply -f k8s/app-secret.yml  
-
-    # -------------------------
-    # INFRA
-    # -------------------------
-    - name: Deploy Redis
-      run: |
-        kubectl apply -f k8s/infra/redis-deployment.yml
-        kubectl rollout status deployment/redis --timeout=180s
-
-    - name: Deploy MySQL
-      run: |
-        kubectl apply -f k8s/mysql-deployment.yml
-        kubectl rollout status deployment/mysql --timeout=300s
-        kubectl apply -f k8s/mysql/mysql-user.yml
-        kubectl apply -f k8s/mysql/mysql-product.yml
-
-    # -------------------------
-    # EUREKA
-    # -------------------------
-    - name: Deploy Eureka Server
-      run: |
-        kubectl apply -f k8s/eureka-server-deployment.yml
-        kubectl apply -f k8s/eureka-server.yml
-        kubectl rollout status deployment/eureka-server --timeout=300s
-
-    # -------------------------
-    # CONFIG SERVER
-    # -------------------------
-    - name: Deploy Config Server
-      run: |
-        kubectl apply -f k8s/config-server-deployment.yml
-        kubectl apply -f k8s/config-server.yml
-        kubectl rollout status deployment/config-server --timeout=300s
-
-    # -------------------------
-    # API GATEWAY
-    # -------------------------
-    - name: Deploy API Gateway
-      run: |
-        kubectl apply -f k8s/api-gateway-deployment.yml
-        kubectl apply -f k8s/api-gateway.yml
-        kubectl rollout status deployment/api-gateway --timeout=300s
-
-    # -------------------------
-    # USER SERVICE
-    # -------------------------
-    - name: Deploy User Service
-      run: |
-        kubectl apply -f k8s/user-registration-deployment.yml
-        kubectl apply -f k8s/user-registration.yml
-        kubectl rollout status deployment/user-registration --timeout=300s
-
-    # -------------------------
-    # PRODUCT SERVICE
-    # -------------------------
-    - name: Deploy Product Service
-      run: |
-        kubectl apply -f k8s/product-service-application-deployment.yml
-        kubectl apply -f k8s/product-service-application.yml
-        kubectl rollout status deployment/product-service --timeout=300s
-
-    # -------------------------
-    # FINAL STATUS
-    # -------------------------
-    - name: Final status
-      run: kubectl get pods
+    #--------------------------
+    # BUILD MAVEN
+    #--------------------------
+    -name: maven
+     run : build mvn all modules
