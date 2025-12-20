@@ -13,7 +13,7 @@ ENV JAVA_OPTS="-Xms256m -Xmx512m"
 ENV SPRING_PROFILES_ACTIVE=dev
 
 # Copy the pre-built JAR from GitHub Actions
-COPY target/OrderServiceApplication-0.0.1-SNAPSHOT.jar OrderServiceApplication.jar
+COPY target/*.jar OrderServiceApplication.jar
 
 EXPOSE 8081
 

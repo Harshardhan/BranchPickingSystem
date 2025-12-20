@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
@@ -27,14 +28,15 @@ public class OrderServiceImpl implements OrderService {
 	private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
 
 	private final OrderRepository orderRepository;
-	private final OrderEventPublisher orderEventPublisher;
+	private final OrderEventPublisherImpl orderEventPublisherImpl;
 	private final ProductClient productClient;
 	private final PaymentClient paymentClient; // Feign client
 
-	public OrderServiceImpl(OrderRepository orderRepository, OrderEventPublisher orderEventPublisher,
+    @Autowired
+	public OrderServiceImpl(OrderRepository orderRepository, OrderEventPublisherImpl orderEventPublisherImpl,
 			ProductClient productClient, PaymentClient paymentClient) {
 		this.orderRepository = orderRepository;
-		this.orderEventPublisher = orderEventPublisher;
+		this.orderEventPublisherImpl = orderEventPublisherImpl;
 		this.productClient = productClient;
 		this.paymentClient = paymentClient;
 	}
@@ -133,7 +135,7 @@ public class OrderServiceImpl implements OrderService {
 
 	private void publishOrderEvent(Order order) {
 	    try {
-	        orderEventPublisher.publishOrder(order);
+	        orderEventPublisherImpl.publishOrder(order);
 	    } catch (Exception e) {
 	        logger.error("Failed to publish order event: {}", e.getMessage());
 	    }
@@ -142,7 +144,7 @@ public class OrderServiceImpl implements OrderService {
 	private void publishNotificationEvent(Order order) {
 	    try {
 	        NotificationRequest notification = new NotificationRequest();
-	        orderEventPublisher.publishNotification(notification);
+	        orderEventPublisherImpl.publishNotification(notification);
 	    } catch (Exception e) {
 	        logger.warn("Failed to publish notification event: {}", e.getMessage());
 	    }

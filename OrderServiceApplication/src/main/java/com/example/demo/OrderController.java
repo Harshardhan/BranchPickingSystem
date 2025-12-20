@@ -1,10 +1,12 @@
 package com.example.demo;
 
 import java.net.URI;
+
 import com.example.demo.security.*;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,9 +34,11 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/orders")
 public class OrderController {
 
-	private final OrderService orderService;
+	@Autowired
 
-	private static final Logger logger = LoggerFactory.getLogger(OrderController.class);
+	private  OrderService orderService;
+
+	private static  Logger logger = LoggerFactory.getLogger(OrderController.class);
 
 	public OrderController(OrderService orderService) {
 		this.orderService = orderService;
