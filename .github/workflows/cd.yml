@@ -37,6 +37,11 @@ jobs:
       run: |
         mkdir -p $HOME/.kube
         echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > $HOME/.kube/config
+    #------------------------------
+    # Verify Kubectl nodes
+    #------------------------------
+    - name: verify cluster
+      run: kubectl get nodes
 
     # -----------------------------
     # Update images & Deploy
