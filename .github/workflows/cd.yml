@@ -1,0 +1,82 @@
+name: CD - Deploy to k3d Kubernetes
+
+on:
+  workflow_run:
+    workflows: ["CI - Build All Microservices"]
+    types:
+      - completed
+
+env:
+  IMAGE_TAG: ${{ github.sha }}
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+    # -----------------------------
+    # Checkout
+    # -----------------------------
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # -----------------------------
+    # Setup kubectl
+    # -----------------------------
+    - name: Install kubectl
+      uses: azure/setup-kubectl@v4
+      with:
+        version: 'v1.31.0'
+
+    # -----------------------------
+    # Configure kubeconfig
+    # -----------------------------
+    - name: Setup kubeconfig
+      run: |
+        mkdir -p $HOME/.kube
+        echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > $HOME/.kube/config
+
+    # -----------------------------
+    # Update images & Deploy
+    # -----------------------------
+    - name: Deploy microservices
+      run: |
+        kubectl set image deployment/order-service \
+          order-service=$DOCKERHUB_USERNAME/order-service:$IMAGE_TAG || true
+
+        kubectl set image deployment/product-service \
+          product-service=$DOCKERHUB_USERNAME/product-service:$IMAGE_TAG || true
+
+        kubectl set image deployment/payment-service \
+          payment-service=$DOCKERHUB_USERNAME/payment-service:$IMAGE_TAG || true
+
+        kubectl set image deployment/analytics-service \
+          analytics-service=$DOCKERHUB_USERNAME/analytics-service:$IMAGE_TAG || true
+
+        kubectl set image deployment/notification-service \
+          notification-service=$DOCKERHUB_USERNAME/notification-service:$IMAGE_TAG || true
+
+        kubectl set image deployment/user-registration \
+          user-registration=$DOCKERHUB_USERNAME/user-registration:$IMAGE_TAG || true
+
+        kubectl set image deployment/consolidation-service \
+          consolidation-service=$DOCKERHUB_USERNAME/consolidation-service:$IMAGE_TAG || true
+
+        kubectl set image deployment/api-gateway \
+          api-gateway=$DOCKERHUB_USERNAME/api-gateway:$IMAGE_TAG || true
+
+        kubectl set image deployment/config-server \
+          config-server=$DOCKERHUB_USERNAME/config-server:$IMAGE_TAG || true
+
+        kubectl set image deployment/eureka-server \
+          eureka-server=$DOCKERHUB_USERNAME/eureka-server:$IMAGE_TAG || true
+
+    # -----------------------------
+    # Verify rollout
+    # -----------------------------
+    - name: Verify deployment
+      run: |
+        kubectl rollout status deployment/order-service
+        kubectl rollout status deployment/api-gateway
