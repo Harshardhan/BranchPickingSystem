@@ -55,39 +55,46 @@ jobs:
         kubectl get pods -A
 
     # -----------------------------
-    # Deploy microservices
+    # APPLY KUBERNETES MANIFESTS (🔥 MISSING STEP)
+    # -----------------------------
+    - name: Apply Kubernetes manifests
+      run: |
+        kubectl apply -f k8s/
+
+    # -----------------------------
+    # Update images
     # -----------------------------
     - name: Deploy microservices
       run: |
         kubectl set image deployment/eureka-server \
-          eureka-server=$DOCKERHUB_USERNAME/eureka-server:$IMAGE_TAG || true
+          eureka-server=$DOCKERHUB_USERNAME/eureka-server:$IMAGE_TAG
 
         kubectl set image deployment/config-server \
-          config-server=$DOCKERHUB_USERNAME/config-server:$IMAGE_TAG || true
+          config-server=$DOCKERHUB_USERNAME/config-server:$IMAGE_TAG
 
         kubectl set image deployment/api-gateway \
-          api-gateway=$DOCKERHUB_USERNAME/api-gateway:$IMAGE_TAG || true
+          api-gateway=$DOCKERHUB_USERNAME/api-gateway:$IMAGE_TAG
 
         kubectl set image deployment/analytics-service \
-          analytics-service=$DOCKERHUB_USERNAME/analytics-service:$IMAGE_TAG || true
+          analytics-service=$DOCKERHUB_USERNAME/analytics-service:$IMAGE_TAG
 
         kubectl set image deployment/notification-service \
-          notification-service=$DOCKERHUB_USERNAME/notification-service:$IMAGE_TAG || true
+          notification-service=$DOCKERHUB_USERNAME/notification-service:$IMAGE_TAG
 
         kubectl set image deployment/user-registration \
-          user-registration=$DOCKERHUB_USERNAME/user-registration:$IMAGE_TAG || true
+          user-registration=$DOCKERHUB_USERNAME/user-registration:$IMAGE_TAG
 
         kubectl set image deployment/consolidation-service \
-          consolidation-service=$DOCKERHUB_USERNAME/consolidation-service:$IMAGE_TAG || true
+          consolidation-service=$DOCKERHUB_USERNAME/consolidation-service:$IMAGE_TAG
 
         kubectl set image deployment/order-service \
-           order-service=$DOCKERHUB_USERNAME/order-service:$IMAGE_TAG || true
+          order-service=$DOCKERHUB_USERNAME/order-service:$IMAGE_TAG
 
         kubectl set image deployment/product-service \
-          product-service=$DOCKERHUB_USERNAME/product-service:$IMAGE_TAG || true
+          product-service=$DOCKERHUB_USERNAME/product-service:$IMAGE_TAG
 
         kubectl set image deployment/payment-service \
-          payment-service=$DOCKERHUB_USERNAME/payment-service:$IMAGE_TAG || true
+          payment-service=$DOCKERHUB_USERNAME/payment-service:$IMAGE_TAG
 
     # -----------------------------
     # Verify rollout
