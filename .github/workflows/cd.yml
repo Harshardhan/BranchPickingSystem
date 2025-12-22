@@ -23,7 +23,7 @@ jobs:
       uses: actions/checkout@v4
 
     # -----------------------------
-    # Setup kubectl
+    # Install kubectl
     # -----------------------------
     - name: Install kubectl
       uses: azure/setup-kubectl@v4
@@ -31,31 +31,42 @@ jobs:
         version: 'v1.31.0'
 
     # -----------------------------
-    # Configure kubeconfig
+    # Install k3d
     # -----------------------------
-    - name: Setup kubeconfig
+    - name: Install k3d
       run: |
-        mkdir -p $HOME/.kube
-        echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > $HOME/.kube/config
-    #------------------------------
-    # Verify Kubectl nodes
-    #------------------------------
-    - name: verify cluster
-      run: kubectl get nodes
+        curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
 
     # -----------------------------
-    # Update images & Deploy
+    # Create k3d cluster
+    # -----------------------------
+    - name: Create k3d cluster
+      run: |
+        k3d cluster create branchpickingsystem \
+          --agents 1 \
+          --wait
+
+    # -----------------------------
+    # Verify cluster
+    # -----------------------------
+    - name: Verify cluster
+      run: |
+        kubectl get nodes
+        kubectl get pods -A
+
+    # -----------------------------
+    # Deploy microservices
     # -----------------------------
     - name: Deploy microservices
       run: |
-        kubectl set image deployment/order-service \
-          order-service=$DOCKERHUB_USERNAME/order-service:$IMAGE_TAG || true
+        kubectl set image deployment/eureka-server \
+          eureka-server=$DOCKERHUB_USERNAME/eureka-server:$IMAGE_TAG || true
 
-        kubectl set image deployment/product-service \
-          product-service=$DOCKERHUB_USERNAME/product-service:$IMAGE_TAG || true
+        kubectl set image deployment/config-server \
+          config-server=$DOCKERHUB_USERNAME/config-server:$IMAGE_TAG || true
 
-        kubectl set image deployment/payment-service \
-          payment-service=$DOCKERHUB_USERNAME/payment-service:$IMAGE_TAG || true
+        kubectl set image deployment/api-gateway \
+          api-gateway=$DOCKERHUB_USERNAME/api-gateway:$IMAGE_TAG || true
 
         kubectl set image deployment/analytics-service \
           analytics-service=$DOCKERHUB_USERNAME/analytics-service:$IMAGE_TAG || true
@@ -69,19 +80,19 @@ jobs:
         kubectl set image deployment/consolidation-service \
           consolidation-service=$DOCKERHUB_USERNAME/consolidation-service:$IMAGE_TAG || true
 
-        kubectl set image deployment/api-gateway \
-          api-gateway=$DOCKERHUB_USERNAME/api-gateway:$IMAGE_TAG || true
+        kubectl set image deployment/order-service \
+           order-service=$DOCKERHUB_USERNAME/order-service:$IMAGE_TAG || true
 
-        kubectl set image deployment/config-server \
-          config-server=$DOCKERHUB_USERNAME/config-server:$IMAGE_TAG || true
+        kubectl set image deployment/product-service \
+          product-service=$DOCKERHUB_USERNAME/product-service:$IMAGE_TAG || true
 
-        kubectl set image deployment/eureka-server \
-          eureka-server=$DOCKERHUB_USERNAME/eureka-server:$IMAGE_TAG || true
+        kubectl set image deployment/payment-service \
+          payment-service=$DOCKERHUB_USERNAME/payment-service:$IMAGE_TAG || true
 
     # -----------------------------
     # Verify rollout
     # -----------------------------
-    - name: Verify deployment
+    - name: Verify rollout
       run: |
         kubectl rollout status deployment/order-service
         kubectl rollout status deployment/api-gateway
