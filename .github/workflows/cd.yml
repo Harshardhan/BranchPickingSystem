@@ -58,7 +58,7 @@ jobs:
       run: |
         kubectl apply -f k8s/
 
-    # ---------------- Update images ----------------
+    # ---------------- Update deployment images ----------------
     - name: Update deployment images
       shell: powershell
       run: |
@@ -69,7 +69,7 @@ jobs:
           "order-service", "product-service", "payment-service"
         )
         foreach ($svc in $services) {
-          kubectl set image deployment/$svc $svc=$env:DOCKERHUB_USERNAME/$svc:$env:IMAGE_TAG
+          kubectl set image deployment/$svc $svc="${env:DOCKERHUB_USERNAME}/$svc:${env:IMAGE_TAG}"
         }
 
     # ---------------- Verify rollout ----------------
