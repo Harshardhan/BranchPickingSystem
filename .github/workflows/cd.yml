@@ -7,7 +7,7 @@ on:
       - completed
 
 env:
-  IMAGE_TAG: ${{ github.sha }}
+  IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
 jobs:
@@ -47,25 +47,26 @@ jobs:
       shell: powershell
       run: |
         $kubePath = "$PWD/kubeconfig"
-        [System.IO.File]::WriteAllBytes($kubePath, [System.Convert]::FromBase64String("${{ secrets.KUBECONFIG_B64 }}"))
+        [IO.File]::WriteAllBytes($kubePath, [Convert]::FromBase64String("${{ secrets.KUBECONFIG_B64 }}"))
         $env:KUBECONFIG = $kubePath
-        kubectl config view
         kubectl get nodes
 
-    # ---------------- Apply Kubernetes manifests ----------------
+    # ---------------- Apply manifests ----------------
     - name: Apply Kubernetes manifests
       shell: powershell
       run: |
-        kubectl apply -f k8s/
+        kubectl apply -f k8s/eureka-server
+        kubectl apply -f k8s/config-server
+        kubectl apply -f k8s/api-gateway
 
-    # ---------------- Update deployment images ----------------
+    # ---------------- Update images safely ----------------
     - name: Update deployment images
       shell: powershell
       run: |
-        $services = @(
-          "eureka-server", "config-server", "api-gateway")
+        $services = @("eureka-server", "config-server", "api-gateway")
 
         foreach ($svc in $services) {
-            $image = "${env:DOCKERHUB_USERNAME}/$($svc):$($env:IMAGE_TAG)"
-            kubectl set image deployment/$svc $svc=$image
+          $image = "${env:DOCKERHUB_USERNAME}/$($svc):$($env:IMAGE_TAG)"
+          kubectl set image deployment/$svc $svc=$image
+          kubectl rollout status deployment/$svc --timeout=300s
         }
