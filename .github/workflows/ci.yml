@@ -25,6 +25,7 @@ jobs:
         distribution: 'temurin'
 
     - name: Maven Build (All modules)
+      shell: pwsh
       run: mvn clean package -DskipTests
 
     - name: Docker Login
@@ -33,53 +34,26 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    # ---------------- ORDER SERVICE ----------------
-    - name: Order Service
+    # ---------------- Build & Push Services ----------------
+    - name: Build and Push Microservices
+      shell: pwsh
       run: |
-        docker build -t $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/order-service:${IMAGE_TAG} ./OrderServiceApplication
-        docker push $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/order-service:${IMAGE_TAG}
+        $services = @{
+          "order-service" = "OrderServiceApplication"
+          "product-service" = "ProductServiceApplication"
+          "payment-service" = "PaymentApplication"
+          "analytics-service" = "AnalyticsService"
+          "notification-service" = "NotificationService"
+          "user-registration" = "UserRegistration"
+          "consolidation-service" = "ConsolidationService"
+          "api-gateway" = "API-Gateway"
+          "config-server" = "ConfigServerApp"
+          "eureka-server" = "EurekaServerApp"
+        }
 
-    - name: Product Service
-      run: |
-        docker build -t $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/product-service:${IMAGE_TAG} ./ProductServiceApplication
-        docker push $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/product-service:${IMAGE_TAG}
-
-    - name: Payment Service
-      run: |
-        docker build -t $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/payment-service:${IMAGE_TAG} ./PaymentApplication
-        docker push $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/payment-service:${IMAGE_TAG}
-
-    - name: Analytics Service
-      run: |
-        docker build -t $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/analytics-service:${IMAGE_TAG} ./AnalyticsService
-        docker push $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/analytics-service:${IMAGE_TAG}
-
-    - name: Notification Service
-      run: |
-        docker build -t $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/notification-service:${IMAGE_TAG} ./NotificationService
-        docker push $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/notification-service:${IMAGE_TAG}
-
-    - name: User Registration Service
-      run: |
-        docker build -t $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/user-registration:${IMAGE_TAG} ./UserRegistration
-        docker push $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/user-registration:${IMAGE_TAG}
-
-    - name: Consolidation Service
-      run: |
-        docker build -t $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/consolidation-service:${IMAGE_TAG} ./ConsolidationService
-        docker push $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/consolidation-service:${IMAGE_TAG}
-
-    - name: API Gateway
-      run: |
-        docker build -t $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/api-gateway:${IMAGE_TAG} ./API-Gateway
-        docker push $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/api-gateway:${IMAGE_TAG}
-
-    - name: Config Server
-      run: |
-        docker build -t $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/config-server:${IMAGE_TAG} ./ConfigServerApp
-        docker push $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/config-server:${IMAGE_TAG}
-
-    - name: Eureka Server
-      run: |
-        docker build -t $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/eureka-server:${IMAGE_TAG} ./EurekaServerApp
-        docker push $REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/eureka-server:${IMAGE_TAG}
+        foreach ($svc in $services.Keys) {
+          $path = $services[$svc]
+          Write-Host "Building and pushing $svc from $path..."
+          docker build -t $env:REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/$svc:$env:IMAGE_TAG $path
+          docker push $env:REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/$svc:$env:IMAGE_TAG
+        }
