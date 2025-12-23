@@ -70,7 +70,7 @@ jobs:
         )
 
         foreach ($svc in $services) {
-            $image = "${env:DOCKERHUB_USERNAME}/$svc:${env:IMAGE_TAG}"
+            $image = "${env:DOCKERHUB_USERNAME}/$($svc):$($env:IMAGE_TAG)"
             kubectl set image deployment/$svc $svc=$image
         }
 
