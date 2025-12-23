@@ -15,24 +15,17 @@ jobs:
     runs-on: self-hosted
 
     steps:
-    # -------------------------------------------------
-    # Checkout
-    # -------------------------------------------------
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # -------------------------------------------------
-    # Install kubectl
-    # -------------------------------------------------
+    # ---------------- Install kubectl ----------------
     - name: Install kubectl
       shell: powershell
       run: |
         choco install kubernetes-cli -y
         kubectl version --client
 
-    # -------------------------------------------------
-    # Configure kubeconfig
-    # -------------------------------------------------
+    # ---------------- Configure kubeconfig ----------------
     - name: Configure kubeconfig
       shell: powershell
       run: |
@@ -44,51 +37,82 @@ jobs:
         $env:KUBECONFIG = $kubePath
         kubectl get nodes
 
-    # =================================================
-    # EUREKA - BLUE GREEN DEPLOYMENT
-    # =================================================
+    # =====================================================
+    # 🔵🟢 Eureka Blue-Green Deployment
+    # =====================================================
     - name: Deploy Eureka (Blue-Green)
       shell: powershell
       run: |
-        Write-Host "Applying Eureka base manifests"
+        Write-Host "📦 Applying Eureka base manifests"
 
         kubectl apply -f k8s/eureka-server.yml
         kubectl apply -f k8s/eureka-blue.yml
         kubectl apply -f k8s/eureka-green.yml
 
-        # Detect active color
-        $active = kubectl get svc eureka `
-          -o jsonpath="{.spec.selector.color}"
+        # Detect active color (default to blue if empty)
+        $active = kubectl get svc eureka-server -o jsonpath="{.spec.selector.color}"
+        if (-not $active) { $active = "blue" }
 
-        if (-not $active) {
-          $active = "blue"
-        }
+        if ($active -eq "blue") { $target = "green" } else { $target = "blue" }
 
-        if ($active -eq "blue") {
-          $target = "green"
-        } else {
-          $target = "blue"
-        }
-
-        Write-Host "Active=$active | Deploying=$target"
+        Write-Host "🔄 Active=$active | Deploying=$target"
 
         # Update image on inactive deployment
         kubectl set image deployment/eureka-$target `
-          eureka-server="$env:DOCKERHUB_USERNAME/eureka-server:$env:IMAGE_TAG"
+          eureka="$env:DOCKERHUB_USERNAME/eureka-server:$env:IMAGE_TAG"
 
         kubectl rollout status deployment/eureka-$target --timeout=300s
 
-        Write-Host "Switching traffic to $target"
-
-        kubectl patch svc eureka `
+        # Switch traffic
+        kubectl patch svc eureka-server `
           -p "{""spec"":{""selector"":{""app"":""eureka"",""color"":""$target""}}}"
 
-        Write-Host "Eureka Blue-Green deployment completed"
+        Write-Host "✅ Eureka Blue-Green deployment completed"
 
-    # -------------------------------------------------
-    # Verification
-    # -------------------------------------------------
-    - name: Verify running images
+    # =====================================================
+    # Config Server Deployment
+    # =====================================================
+    - name: Deploy Config Server (Blue-Green)
       shell: powershell
       run: |
-        kubectl get pods -o=jsonpath="{range .items[*]}{.metadata.name} => {.spec.containers[*].image}`n{end}"
+        Write-Host "📦 Applying Config Server manifests"
+
+        kubectl apply -f k8s/config-server.yml
+        kubectl apply -f k8s/config-server-deployment.yml
+        kubectl apply -f k8s/config-blue.yml
+        kubectl apply -f k8s/config-green.yml
+
+        $active = kubectl get svc config-server -o jsonpath="{.spec.selector.color}"
+        if (-not $active) { $active = "blue" }
+
+        if ($active -eq "blue") { $target = "green" } else { $target = "blue" }
+
+        Write-Host "🔄 Active=$active | Deploying=$target"
+
+        kubectl set image deployment/config-$target `
+          config="$env:DOCKERHUB_USERNAME/config-server:$env:IMAGE_TAG"
+
+        kubectl rollout status deployment/config-$target --timeout=300s
+
+        kubectl patch svc config-server `
+          -p "{""spec"":{""selector"":{""app"":""config-server"",""color"":""$target""}}}"
+
+        Write-Host "✅ Config Server Blue-Green deployment completed"
+
+    # =====================================================
+    # API Gateway Deployment
+    # =====================================================
+    - name: Deploy API Gateway
+      shell: powershell
+      run: |
+        Write-Host "📦 Applying API Gateway manifests"
+
+        kubectl apply -f k8s/api-gateway.yml
+        kubectl apply -f k8s/api-gateway-deployment.yml
+
+        kubectl set image deployment/api-gateway `
+          api-gateway="$env:DOCKERHUB_USERNAME/api-gateway:$env:IMAGE_TAG"
+
+        kubectl rollout status deployment/api-gateway --timeout=300s
+
+        Write-Host "✅ API Gateway deployment completed"
