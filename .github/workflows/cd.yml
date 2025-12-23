@@ -47,7 +47,7 @@ jobs:
       shell: powershell
       run: |
         $kubePath = "$PWD/kubeconfig"
-        [System.IO.File]::WriteAllBytes($kubePath, [System.Convert]::FromBase64String("${{ secrets.KUBECONFIG_BASE64 }}"))
+        [System.IO.File]::WriteAllBytes($kubePath, [System.Convert]::FromBase64String("${{ secrets.KUBECONFIG_B64 }}"))
         $env:KUBECONFIG = $kubePath
         kubectl config view
         kubectl get nodes
