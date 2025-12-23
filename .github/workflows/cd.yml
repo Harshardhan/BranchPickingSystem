@@ -33,12 +33,11 @@ jobs:
         choco install kubernetes-cli -y
         kubectl version --client
 
-    # ---------------- Create k3d cluster if not exists ----------------
+    # ---------------- Create k3d cluster ----------------
     - name: Create k3d cluster
       shell: powershell
       run: |
-        $cluster = k3d cluster list | Select-String "branchpickingsystem"
-        if (-not $cluster) {
+        if (-not (k3d cluster list | Select-String "branchpickingsystem")) {
           k3d cluster create branchpickingsystem --agents 1 --wait
         }
 
@@ -51,22 +50,48 @@ jobs:
         $env:KUBECONFIG = $kubePath
         kubectl get nodes
 
-    # ---------------- Apply manifests ----------------
-    - name: Apply Kubernetes manifests
+    # =====================================================
+    # 1️⃣ EUREKA (BASE + BLUE/GREEN)
+    # =====================================================
+    - name: Deploy Eureka
       shell: powershell
       run: |
-        kubectl apply -f k8s/eureka-server
-        kubectl apply -f k8s/config-server
-        kubectl apply -f k8s/api-gateway
+        kubectl apply -f k8s/eureka-server.yml
+        kubectl apply -f k8s/eureka-server-deployment.yml
+        kubectl apply -f k8s/eureka-blue.yml
+        kubectl apply -f k8s/eureka-green.yml
 
-    # ---------------- Update images safely ----------------
-    - name: Update deployment images
+        kubectl set image deployment/eureka-server `
+          eureka-server=${env:DOCKERHUB_USERNAME}/eureka-server:${env:IMAGE_TAG}
+
+        kubectl rollout status deployment/eureka-server --timeout=180s
+
+    # =====================================================
+    # 2️⃣ CONFIG SERVER
+    # =====================================================
+    - name: Deploy Config Server
       shell: powershell
       run: |
-        $services = @("eureka-server", "config-server", "api-gateway")
+        kubectl apply -f k8s/config-server.yml
+        kubectl apply -f k8s/config-server-deployment.yml
+        kubectl apply -f k8s/config-blue.yml
+        kubectl apply -f k8s/config-green.yml
 
-        foreach ($svc in $services) {
-          $image = "${env:DOCKERHUB_USERNAME}/$($svc):$($env:IMAGE_TAG)"
-          kubectl set image deployment/$svc $svc=$image
-          kubectl rollout status deployment/$svc --timeout=300s
-        }
+        kubectl set image deployment/config-server `
+          config-server=${env:DOCKERHUB_USERNAME}/config-server:${env:IMAGE_TAG}
+
+        kubectl rollout status deployment/config-server --timeout=180s
+
+    # =====================================================
+    # 3️⃣ API GATEWAY
+    # =====================================================
+    - name: Deploy API Gateway
+      shell: powershell
+      run: |
+        kubectl apply -f k8s/api-gateway.yml
+        kubectl apply -f k8s/api-gateway-deployment.yml
+
+        kubectl set image deployment/api-gateway `
+          api-gateway=${env:DOCKERHUB_USERNAME}/api-gateway:${env:IMAGE_TAG}
+
+        kubectl rollout status deployment/api-gateway --timeout=180s
