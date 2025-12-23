@@ -14,8 +14,8 @@ spec:
     spec:
       containers:
         - name: product-service
-          image: harsha79/product-service:latest
-          imagePullPolicy: IfNotPresent
+          image: harsha79/product-service:ci
+          imagePullPolicy: Always
           ports:
             - containerPort: 8082
           envFrom:

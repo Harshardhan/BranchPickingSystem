@@ -14,8 +14,8 @@ spec:
     spec:
       containers:
         - name: notification-service
-          image: harsha79/notification-service:latest
-          imagePullPolicy: IfNotPresent
+          image: harsha79/notification-service:ci
+          imagePullPolicy: Always
           ports:
             - containerPort: 8085
           envFrom:

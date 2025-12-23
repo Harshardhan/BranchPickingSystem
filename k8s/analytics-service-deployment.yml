@@ -14,8 +14,8 @@ spec:
     spec:
       containers:
         - name: analytics-service
-          image: harsha79/analytics-service:latest
-          imagePullPolicy: IfNotPresent
+          image: harsha79/analytics-service:ci
+          imagePullPolicy: Always
           ports:
             - containerPort: 8087
           envFrom:

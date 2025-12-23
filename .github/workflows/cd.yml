@@ -3,8 +3,7 @@ name: CD - Deploy to k3d Kubernetes
 on:
   workflow_run:
     workflows: ["CI - Build All Microservices"]
-    types:
-      - completed
+    types: [completed]
 
 env:
   IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
@@ -19,79 +18,53 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # ---------------- Install k3d ----------------
-    - name: Install k3d
-      shell: powershell
-      run: |
-        choco install k3d -y
-        k3d version
-
-    # ---------------- Install kubectl ----------------
+    # ---------------- kubectl ----------------
     - name: Install kubectl
       shell: powershell
       run: |
         choco install kubernetes-cli -y
-        kubectl version --client
 
-    # ---------------- Create k3d cluster ----------------
-    - name: Create k3d cluster
-      shell: powershell
-      run: |
-        if (-not (k3d cluster list | Select-String "branchpickingsystem")) {
-          k3d cluster create branchpickingsystem --agents 1 --wait
-        }
-
-    # ---------------- Configure kubeconfig ----------------
+    # ---------------- kubeconfig ----------------
     - name: Configure kubeconfig
       shell: powershell
       run: |
         $kubePath = "$PWD/kubeconfig"
-        [IO.File]::WriteAllBytes($kubePath, [Convert]::FromBase64String("${{ secrets.KUBECONFIG_B64 }}"))
+        [IO.File]::WriteAllBytes(
+          $kubePath,
+          [Convert]::FromBase64String("${{ secrets.KUBECONFIG_B64 }}")
+        )
         $env:KUBECONFIG = $kubePath
         kubectl get nodes
 
     # =====================================================
-    # 1️⃣ EUREKA (BASE + BLUE/GREEN)
+    # 🔵🟢 EUREKA BLUE–GREEN
     # =====================================================
-    - name: Deploy Eureka
+    - name: Deploy Eureka (Blue-Green)
       shell: powershell
       run: |
-        kubectl apply -f k8s/eureka-server.yml
-        kubectl apply -f k8s/eureka-server-deployment.yml
-        kubectl apply -f k8s/eureka-blue.yml
-        kubectl apply -f k8s/eureka-green.yml
+        # Apply base resources
+        kubectl apply -f k8s/eureka-service.yml
+        kubectl apply -f k8s/eureka-blue-deployment.yml
+        kubectl apply -f k8s/eureka-green-deployment.yml
 
-        kubectl set image deployment/eureka-server `
+        # Detect active color
+        $active = kubectl get svc eureka `
+          -o jsonpath="{.spec.selector.color}"
+
+        if ($active -eq "blue") {
+          $target = "green"
+        } else {
+          $target = "blue"
+        }
+
+        Write-Host "Active=$active → Deploying=$target"
+
+        # Update inactive deployment image
+        kubectl set image deployment/eureka-$target `
           eureka-server=${env:DOCKERHUB_USERNAME}/eureka-server:${env:IMAGE_TAG}
 
-        kubectl rollout status deployment/eureka-server --timeout=180s
+        kubectl rollout status deployment/eureka-$target --timeout=180s
 
-    # =====================================================
-    # 2️⃣ CONFIG SERVER
-    # =====================================================
-    - name: Deploy Config Server
-      shell: powershell
-      run: |
-        kubectl apply -f k8s/config-server.yml
-        kubectl apply -f k8s/config-server-deployment.yml
-        kubectl apply -f k8s/config-blue.yml
-        kubectl apply -f k8s/config-green.yml
-
-        kubectl set image deployment/config-server `
-          config-server=${env:DOCKERHUB_USERNAME}/config-server:${env:IMAGE_TAG}
-
-        kubectl rollout status deployment/config-server --timeout=180s
-
-    # =====================================================
-    # 3️⃣ API GATEWAY
-    # =====================================================
-    - name: Deploy API Gateway
-      shell: powershell
-      run: |
-        kubectl apply -f k8s/api-gateway.yml
-        kubectl apply -f k8s/api-gateway-deployment.yml
-
-        kubectl set image deployment/api-gateway `
-          api-gateway=${env:DOCKERHUB_USERNAME}/api-gateway:${env:IMAGE_TAG}
-
-        kubectl rollout status deployment/api-gateway --timeout=180s
+        # Switch traffic
+        kubectl patch svc eureka `
+          -p "{""spec"":{""selector"":{""app"":""eureka"",""color"":""$target""}}}"

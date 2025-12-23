@@ -16,8 +16,8 @@ spec:
     spec:
       containers:
         - name: eureka
-          image: harsha79/config-server:v2  # later: :v2
-          imagePullPolicy: IfNotPresent
+          image: harsha79/config-server:ci
+          imagePullPolicy: Always
           ports:
             - containerPort: 8888
           resources:
