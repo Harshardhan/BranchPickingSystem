@@ -14,10 +14,16 @@ spec:
     spec:
       containers:
         - name: notification-service
-          image: notification-service:ci
+          image: harsha79/notification-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8085
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secret
+
           resources:
             requests:
               memory: "256Mi"

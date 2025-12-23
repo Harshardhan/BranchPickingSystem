@@ -1,4 +1,4 @@
-name: CD - Deploy to k3d Kubernetes
+name: CD - Deploy to Kubernetes (k3d)
 
 on:
   workflow_run:
@@ -7,19 +7,19 @@ on:
       - completed
 
 env:
-  IMAGE_TAG: ${{ github.sha }}
+  IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
 jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
     # -----------------------------
-    # Checkout
+    # Checkout repository
     # -----------------------------
-    - name: Checkout repository
+    - name: Checkout code
       uses: actions/checkout@v4
 
     # -----------------------------
@@ -31,38 +31,23 @@ jobs:
         version: 'v1.31.0'
 
     # -----------------------------
-    # Install k3d
+    # Configure kubeconfig
     # -----------------------------
-    - name: Install k3d
+    - name: Setup kubeconfig
       run: |
-        curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
-
-    # -----------------------------
-    # Create k3d cluster
-    # -----------------------------
-    - name: Create k3d cluster
-      run: |
-        k3d cluster create branchpickingsystem \
-          --agents 1 \
-          --wait
-
-    # -----------------------------
-    # Verify cluster
-    # -----------------------------
-    - name: Verify cluster
-      run: |
+        echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > kubeconfig
+        export KUBECONFIG=$PWD/kubeconfig
         kubectl get nodes
-        kubectl get pods -A
 
     # -----------------------------
-    # APPLY KUBERNETES MANIFESTS (🔥 MISSING STEP)
+    # Apply base Kubernetes manifests
     # -----------------------------
     - name: Apply Kubernetes manifests
       run: |
         kubectl apply -f k8s/
 
     # -----------------------------
-    # Update images
+    # Update images (Rolling Update)
     # -----------------------------
     - name: Deploy microservices
       run: |
@@ -101,5 +86,7 @@ jobs:
     # -----------------------------
     - name: Verify rollout
       run: |
-        kubectl rollout status deployment/order-service
+        kubectl rollout status deployment/eureka-server
+        kubectl rollout status deployment/config-server
         kubectl rollout status deployment/api-gateway
+        kubectl rollout status deployment/order-service

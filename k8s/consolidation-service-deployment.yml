@@ -14,10 +14,16 @@ spec:
     spec:
       containers:
         - name: consolidation-service
-          image: consolidation-service:ci
+          image: harsha79/consolidation-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8084
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secret
+
           resources:
             requests:
               memory: "256Mi"
