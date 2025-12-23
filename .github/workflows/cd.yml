@@ -38,12 +38,12 @@ jobs:
         kubectl get nodes
 
     # =====================================================
-    # 🔵🟢 Eureka Blue-Green Deployment
+    # Eureka Blue-Green Deployment
     # =====================================================
     - name: Deploy Eureka (Blue-Green)
       shell: powershell
       run: |
-        Write-Host "📦 Applying Eureka base manifests"
+        Write-Host "Applying Eureka base manifests"
 
         kubectl apply -f k8s/eureka-server.yml
         kubectl apply -f k8s/eureka-blue.yml
@@ -55,7 +55,7 @@ jobs:
 
         if ($active -eq "blue") { $target = "green" } else { $target = "blue" }
 
-        Write-Host "🔄 Active=$active | Deploying=$target"
+        Write-Host "Active=$active | Deploying=$target"
 
         # Update image on inactive deployment
         kubectl set image deployment/eureka-$target `
@@ -66,15 +66,15 @@ jobs:
         # Switch traffic
         kubectl patch svc eureka-server -p '{"spec":{"selector":{"app":"eureka","color":"'"$target"'"}}}'
 
-        Write-Host "✅ Eureka Blue-Green deployment completed"
+        Write-Host "Eureka Blue-Green deployment completed"
 
     # =====================================================
-    # Config Server Deployment (Blue-Green)
+    # Config Server Blue-Green Deployment
     # =====================================================
     - name: Deploy Config Server
       shell: powershell
       run: |
-        Write-Host "📦 Applying Config Server manifests"
+        Write-Host "Applying Config Server manifests"
 
         kubectl apply -f k8s/config-server.yml
         kubectl apply -f k8s/config-blue.yml
@@ -85,7 +85,7 @@ jobs:
 
         if ($active -eq "blue") { $target = "green" } else { $target = "blue" }
 
-        Write-Host "🔄 Active=$active | Deploying=$target"
+        Write-Host "Active=$active | Deploying=$target"
 
         kubectl set image deployment/config-$target `
           config="$env:DOCKERHUB_USERNAME/config-server:$env:IMAGE_TAG"
@@ -94,7 +94,7 @@ jobs:
 
         kubectl patch svc config-server -p '{"spec":{"selector":{"app":"config-server","color":"'"$target"'"}}}'
 
-        Write-Host "✅ Config Server Blue-Green deployment completed"
+        Write-Host "Config Server Blue-Green deployment completed"
 
     # =====================================================
     # API Gateway Deployment
@@ -102,7 +102,7 @@ jobs:
     - name: Deploy API Gateway
       shell: powershell
       run: |
-        Write-Host "📦 Applying API Gateway manifests"
+        Write-Host "Applying API Gateway manifests"
 
         kubectl apply -f k8s/api-gateway.yml
         kubectl apply -f k8s/api-gateway-deployment.yml
@@ -112,4 +112,4 @@ jobs:
 
         kubectl rollout status deployment/api-gateway --timeout=300s
 
-        Write-Host "✅ API Gateway deployment completed"
+        Write-Host "API Gateway deployment completed"
