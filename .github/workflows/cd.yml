@@ -68,14 +68,16 @@ jobs:
           "user-registration", "consolidation-service",
           "order-service", "product-service", "payment-service"
         )
+
         foreach ($svc in $services) {
-          kubectl set image deployment/$svc $svc="${env:DOCKERHUB_USERNAME}/$svc:${env:IMAGE_TAG}"
+            $image = "${env:DOCKERHUB_USERNAME}/$svc:${env:IMAGE_TAG}"
+            kubectl set image deployment/$svc $svc=$image
         }
 
     # ---------------- Verify rollout ----------------
     - name: Verify rollout
       shell: powershell
       run: |
-        foreach ($svc in @("api-gateway","order-service")) {
+        foreach ($svc in @("eureka-server","config-server")) {
           kubectl rollout status deployment/$svc
         }
