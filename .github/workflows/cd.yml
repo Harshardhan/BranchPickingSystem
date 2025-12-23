@@ -50,7 +50,7 @@ jobs:
         kubectl apply -f k8s/eureka-green.yml
 
         # Detect active color (default to blue if empty)
-        $active = kubectl get svc eureka-server -o jsonpath="{.spec.selector.color}"
+        $active = kubectl get svc eureka-server -o jsonpath='{.spec.selector.color}'
         if (-not $active) { $active = "blue" }
 
         if ($active -eq "blue") { $target = "green" } else { $target = "blue" }
@@ -64,25 +64,23 @@ jobs:
         kubectl rollout status deployment/eureka-$target --timeout=300s
 
         # Switch traffic
-        kubectl patch svc eureka-server `
-          -p "{""spec"":{""selector"":{""app"":""eureka"",""color"":""$target""}}}"
+        kubectl patch svc eureka-server -p '{"spec":{"selector":{"app":"eureka","color":"'"$target"'"}}}'
 
         Write-Host "✅ Eureka Blue-Green deployment completed"
 
     # =====================================================
-    # Config Server Deployment
+    # Config Server Deployment (Blue-Green)
     # =====================================================
-    - name: Deploy Config Server (Blue-Green)
+    - name: Deploy Config Server
       shell: powershell
       run: |
         Write-Host "📦 Applying Config Server manifests"
 
         kubectl apply -f k8s/config-server.yml
-        kubectl apply -f k8s/config-server-deployment.yml
         kubectl apply -f k8s/config-blue.yml
         kubectl apply -f k8s/config-green.yml
 
-        $active = kubectl get svc config-server -o jsonpath="{.spec.selector.color}"
+        $active = kubectl get svc config-server -o jsonpath='{.spec.selector.color}'
         if (-not $active) { $active = "blue" }
 
         if ($active -eq "blue") { $target = "green" } else { $target = "blue" }
@@ -94,8 +92,7 @@ jobs:
 
         kubectl rollout status deployment/config-$target --timeout=300s
 
-        kubectl patch svc config-server `
-          -p "{""spec"":{""selector"":{""app"":""config-server"",""color"":""$target""}}}"
+        kubectl patch svc config-server -p '{"spec":{"selector":{"app":"config-server","color":"'"$target"'"}}}'
 
         Write-Host "✅ Config Server Blue-Green deployment completed"
 
