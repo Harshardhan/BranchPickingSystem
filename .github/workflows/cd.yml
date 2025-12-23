@@ -15,16 +15,24 @@ jobs:
     runs-on: self-hosted
 
     steps:
+    # =====================================================
+    # 1️⃣ Checkout
+    # =====================================================
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # ---------------- kubectl ----------------
+    # =====================================================
+    # 2️⃣ Install kubectl
+    # =====================================================
     - name: Install kubectl
       shell: powershell
       run: |
-        choco install kubernetes-cli -y
+        choco install kubernetes-cli -y --no-progress
+        kubectl version --client
 
-    # ---------------- kubeconfig ----------------
+    # =====================================================
+    # 3️⃣ Configure kubeconfig
+    # =====================================================
     - name: Configure kubeconfig
       shell: powershell
       run: |
@@ -37,19 +45,23 @@ jobs:
         kubectl get nodes
 
     # =====================================================
-    # 🔵🟢 EUREKA BLUE–GREEN
+    # 🔵🟢 4️⃣ EUREKA BLUE–GREEN DEPLOY
     # =====================================================
     - name: Deploy Eureka (Blue-Green)
       shell: powershell
       run: |
-        # Apply base resources
+        Write-Host "📦 Applying base manifests"
         kubectl apply -f k8s/eureka-service.yml
         kubectl apply -f k8s/eureka-blue-deployment.yml
         kubectl apply -f k8s/eureka-green-deployment.yml
 
-        # Detect active color
+        # Detect active color (default to blue if empty)
         $active = kubectl get svc eureka `
           -o jsonpath="{.spec.selector.color}"
+
+        if (-not $active) {
+          $active = "blue"
+        }
 
         if ($active -eq "blue") {
           $target = "green"
@@ -57,14 +69,16 @@ jobs:
           $target = "blue"
         }
 
-        Write-Host "Active=$active → Deploying=$target"
+        Write-Host "🔄 Active=$active → Deploying=$target"
 
-        # Update inactive deployment image
+        # Update image on inactive deployment (CI SHA)
         kubectl set image deployment/eureka-$target `
           eureka-server=${env:DOCKERHUB_USERNAME}/eureka-server:${env:IMAGE_TAG}
 
-        kubectl rollout status deployment/eureka-$target --timeout=180s
+        kubectl rollout status deployment/eureka-$target -
 
-        # Switch traffic
+        Write-Host "🚦 Switching traffic to $target"
         kubectl patch svc eureka `
           -p "{""spec"":{""selector"":{""app"":""eureka"",""color"":""$target""}}}"
+
+        Write-Host "✅ Eureka Blue-Green switch completed"
