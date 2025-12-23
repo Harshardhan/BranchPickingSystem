@@ -15,24 +15,24 @@ jobs:
     runs-on: self-hosted
 
     steps:
-    # =====================================================
-    # 1️⃣ Checkout
-    # =====================================================
+    # -------------------------------------------------
+    # Checkout
+    # -------------------------------------------------
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # =====================================================
-    # 2️⃣ Install kubectl
-    # =====================================================
+    # -------------------------------------------------
+    # Install kubectl
+    # -------------------------------------------------
     - name: Install kubectl
       shell: powershell
       run: |
-        choco install kubernetes-cli -y --no-progress
+        choco install kubernetes-cli -y
         kubectl version --client
 
-    # =====================================================
-    # 3️⃣ Configure kubeconfig
-    # =====================================================
+    # -------------------------------------------------
+    # Configure kubeconfig
+    # -------------------------------------------------
     - name: Configure kubeconfig
       shell: powershell
       run: |
@@ -44,18 +44,19 @@ jobs:
         $env:KUBECONFIG = $kubePath
         kubectl get nodes
 
-    # =====================================================
-    # 🔵🟢 4️⃣ EUREKA BLUE–GREEN DEPLOY
-    # =====================================================
+    # =================================================
+    # EUREKA - BLUE GREEN DEPLOYMENT
+    # =================================================
     - name: Deploy Eureka (Blue-Green)
       shell: powershell
       run: |
-        Write-Host "📦 Applying base manifests"
+        Write-Host "Applying Eureka base manifests"
+
         kubectl apply -f k8s/eureka-service.yml
         kubectl apply -f k8s/eureka-blue-deployment.yml
         kubectl apply -f k8s/eureka-green-deployment.yml
 
-        # Detect active color (default to blue if empty)
+        # Detect active color
         $active = kubectl get svc eureka `
           -o jsonpath="{.spec.selector.color}"
 
@@ -69,16 +70,25 @@ jobs:
           $target = "blue"
         }
 
-        Write-Host "🔄 Active=$active → Deploying=$target"
+        Write-Host "Active=$active | Deploying=$target"
 
-        # Update image on inactive deployment (CI SHA)
+        # Update image on inactive deployment
         kubectl set image deployment/eureka-$target `
-          eureka-server=${env:DOCKERHUB_USERNAME}/eureka-server:${env:IMAGE_TAG}
+          eureka-server="$env:DOCKERHUB_USERNAME/eureka-server:$env:IMAGE_TAG"
 
-        kubectl rollout status deployment/eureka-$target -
+        kubectl rollout status deployment/eureka-$target --timeout=300s
 
-        Write-Host "🚦 Switching traffic to $target"
+        Write-Host "Switching traffic to $target"
+
         kubectl patch svc eureka `
           -p "{""spec"":{""selector"":{""app"":""eureka"",""color"":""$target""}}}"
 
-        Write-Host "✅ Eureka Blue-Green switch completed"
+        Write-Host "Eureka Blue-Green deployment completed"
+
+    # -------------------------------------------------
+    # Verification
+    # -------------------------------------------------
+    - name: Verify running images
+      shell: powershell
+      run: |
+        kubectl get pods -o=jsonpath="{range .items[*]}{.metadata.name} => {.spec.containers[*].image}`n{end}"
