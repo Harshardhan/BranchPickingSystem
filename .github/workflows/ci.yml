@@ -25,7 +25,7 @@ jobs:
         distribution: 'temurin'
 
     - name: Maven Build (All modules)
-      shell: pwsh
+      shell: powershell
       run: mvn clean package -DskipTests
 
     - name: Docker Login
@@ -36,7 +36,7 @@ jobs:
 
     # ---------------- Build & Push Services ----------------
     - name: Build and Push Microservices
-      shell: pwsh
+      shell: powershell
       run: |
         $services = @{
           "order-service" = "OrderServiceApplication"

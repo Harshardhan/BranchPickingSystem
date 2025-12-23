@@ -21,20 +21,20 @@ jobs:
 
     # ---------------- Install k3d and kubectl ----------------
     - name: Install k3d (Windows)
-      shell: pwsh
+      shell: powershell
       run: |
         choco install k3d -y
         k3d version
 
     - name: Install kubectl (Windows)
-      shell: pwsh
+      shell: powershell
       run: |
         choco install kubernetes-cli -y
         kubectl version --client
 
     # ---------------- Create k3d cluster if not exists ----------------
     - name: Create k3d cluster (if not exists)
-      shell: pwsh
+      shell: powershell
       run: |
         $cluster = k3d cluster list | Select-String "branchpickingsystem"
         if (-not $cluster) {
@@ -43,7 +43,7 @@ jobs:
 
     # ---------------- Configure kubeconfig ----------------
     - name: Configure kubeconfig
-      shell: pwsh
+      shell: powershell
       run: |
         $kubePath = "$PWD\kubeconfig"
         [System.IO.File]::WriteAllBytes($kubePath, [System.Convert]::FromBase64String("${{ secrets.KUBECONFIG_BASE64 }}"))
@@ -52,13 +52,13 @@ jobs:
 
     # ---------------- Apply Kubernetes manifests ----------------
     - name: Apply Kubernetes manifests
-      shell: pwsh
+      shell: powershell
       run: |
         kubectl apply -f k8s/
 
     # ---------------- Update images ----------------
     - name: Update images
-      shell: pwsh
+      shell: powershell
       run: |
         $services = @(
           "eureka-server", "config-server", "api-gateway",
@@ -72,7 +72,7 @@ jobs:
 
     # ---------------- Verify rollout ----------------
     - name: Verify rollout
-      shell: pwsh
+      shell: powershell
       run: |
         kubectl rollout status deployment/api-gateway
         kubectl rollout status deployment/order-service
