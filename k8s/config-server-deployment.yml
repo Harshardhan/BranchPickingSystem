@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: config-server
-          image: harsha79/config-server:latest
+          image: harsha79/config-server:ci
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8888
