@@ -1,4 +1,4 @@
-name: CD - Deploy to Kubernetes (k3d)
+name: CD - Deploy to k3d Kubernetes
 
 on:
   workflow_run:
@@ -7,7 +7,7 @@ on:
       - completed
 
 env:
-  IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+  IMAGE_TAG: ${{ github.sha }}
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
 jobs:
@@ -16,77 +16,53 @@ jobs:
     runs-on: self-hosted
 
     steps:
-    # -----------------------------
-    # Checkout repository
-    # -----------------------------
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v4
 
-    # -----------------------------
-    # Install kubectl
-    # -----------------------------
     - name: Install kubectl
       uses: azure/setup-kubectl@v4
       with:
         version: 'v1.31.0'
 
-    # -----------------------------
-    # Configure kubeconfig
-    # -----------------------------
-    - name: Setup kubeconfig
+    - name: Install k3d
+      shell: bash
       run: |
-        echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > kubeconfig
+        curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+
+    - name: Create k3d cluster (if not exists)
+      shell: bash
+      run: |
+        k3d cluster list | grep branchpickingsystem || \
+        k3d cluster create branchpickingsystem --agents 1 --wait
+
+    - name: Configure kubeconfig
+      shell: bash
+      run: |
+        echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 -d > kubeconfig
         export KUBECONFIG=$PWD/kubeconfig
         kubectl get nodes
 
-    # -----------------------------
-    # Apply base Kubernetes manifests
-    # -----------------------------
     - name: Apply Kubernetes manifests
+      shell: bash
       run: |
         kubectl apply -f k8s/
 
-    # -----------------------------
-    # Update images (Rolling Update)
-    # -----------------------------
-    - name: Deploy microservices
+    - name: Update images
+      shell: bash
       run: |
-        kubectl set image deployment/eureka-server \
-          eureka-server=$DOCKERHUB_USERNAME/eureka-server:$IMAGE_TAG
+        kubectl set image deployment/eureka-server eureka-server=$DOCKERHUB_USERNAME/eureka-server:$IMAGE_TAG
+        kubectl set image deployment/config-server config-server=$DOCKERHUB_USERNAME/config-server:$IMAGE_TAG
+        kubectl set image deployment/api-gateway api-gateway=$DOCKERHUB_USERNAME/api-gateway:$IMAGE_TAG
+        kubectl set image deployment/analytics-service analytics-service=$DOCKERHUB_USERNAME/analytics-service:$IMAGE_TAG
+        kubectl set image deployment/notification-service notification-service=$DOCKERHUB_USERNAME/notification-service:$IMAGE_TAG
+        kubectl set image deployment/user-registration user-registration=$DOCKERHUB_USERNAME/user-registration:$IMAGE_TAG
+        kubectl set image deployment/consolidation-service consolidation-service=$DOCKERHUB_USERNAME/consolidation-service:$IMAGE_TAG
+        kubectl set image deployment/order-service order-service=$DOCKERHUB_USERNAME/order-service:$IMAGE_TAG
+        kubectl set image deployment/product-service product-service=$DOCKERHUB_USERNAME/product-service:$IMAGE_TAG
+        kubectl set image deployment/payment-service payment-service=$DOCKERHUB_USERNAME/payment-service:$IMAGE_TAG
 
-        kubectl set image deployment/config-server \
-          config-server=$DOCKERHUB_USERNAME/config-server:$IMAGE_TAG
-
-        kubectl set image deployment/api-gateway \
-          api-gateway=$DOCKERHUB_USERNAME/api-gateway:$IMAGE_TAG
-
-        kubectl set image deployment/analytics-service \
-          analytics-service=$DOCKERHUB_USERNAME/analytics-service:$IMAGE_TAG
-
-        kubectl set image deployment/notification-service \
-          notification-service=$DOCKERHUB_USERNAME/notification-service:$IMAGE_TAG
-
-        kubectl set image deployment/user-registration \
-          user-registration=$DOCKERHUB_USERNAME/user-registration:$IMAGE_TAG
-
-        kubectl set image deployment/consolidation-service \
-          consolidation-service=$DOCKERHUB_USERNAME/consolidation-service:$IMAGE_TAG
-
-        kubectl set image deployment/order-service \
-          order-service=$DOCKERHUB_USERNAME/order-service:$IMAGE_TAG
-
-        kubectl set image deployment/product-service \
-          product-service=$DOCKERHUB_USERNAME/product-service:$IMAGE_TAG
-
-        kubectl set image deployment/payment-service \
-          payment-service=$DOCKERHUB_USERNAME/payment-service:$IMAGE_TAG
-
-    # -----------------------------
-    # Verify rollout
-    # -----------------------------
     - name: Verify rollout
+      shell: bash
       run: |
-        kubectl rollout status deployment/eureka-server
-        kubectl rollout status deployment/config-server
         kubectl rollout status deployment/api-gateway
         kubectl rollout status deployment/order-service
