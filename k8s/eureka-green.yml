@@ -15,7 +15,7 @@ spec:
         color: green
     spec:
       containers:
-        - name: eureka
+        - name: eureka-server
           image: harsha79/eureka-server:PLACEHOLDER
           imagePullPolicy: Always
           ports:
