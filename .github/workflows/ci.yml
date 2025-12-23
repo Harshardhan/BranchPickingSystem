@@ -39,21 +39,21 @@ jobs:
       shell: powershell
       run: |
         $services = @{
-          "order-service" = "OrderServiceApplication"
-          "product-service" = "ProductServiceApplication"
-          "payment-service" = "PaymentApplication"
-          "analytics-service" = "AnalyticsService"
-          "notification-service" = "NotificationService"
-          "user-registration" = "UserRegistration"
-          "consolidation-service" = "ConsolidationService"
-          "api-gateway" = "API-Gateway"
-          "config-server" = "ConfigServerApp"
-          "eureka-server" = "EurekaServerApp"
+            "order-service" = "OrderServiceApplication"
+            "product-service" = "ProductServiceApplication"
+            "payment-service" = "PaymentApplication"
+            "analytics-service" = "AnalyticsService"
+            "notification-service" = "NotificationService"
+            "user-registration" = "UserRegistration"
+            "consolidation-service" = "ConsolidationService"
+            "api-gateway" = "API-Gateway"
+            "config-server" = "ConfigServerApp"
+            "eureka-server" = "EurekaServerApp"
         }
 
         foreach ($svc in $services.Keys) {
-          $path = $services[$svc]
-          Write-Host "Building and pushing $svc from $path..."
-          docker build -t $env:REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/$svc:$env:IMAGE_TAG $path
-          docker push $env:REGISTRY/${{ secrets.DOCKERHUB_USERNAME }}/$svc:$env:IMAGE_TAG
+            $path = $services[$svc]
+            Write-Host "Building and pushing $svc from $path..."
+            docker build -t "${env:REGISTRY}/${{ secrets.DOCKERHUB_USERNAME }}/${svc}:${env:IMAGE_TAG}" $path
+            docker push "${env:REGISTRY}/${{ secrets.DOCKERHUB_USERNAME }}/${svc}:${env:IMAGE_TAG}"
         }
