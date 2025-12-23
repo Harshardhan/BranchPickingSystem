@@ -19,21 +19,22 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # ---------------- Install k3d and kubectl ----------------
-    - name: Install k3d (Windows)
+    # ---------------- Install k3d ----------------
+    - name: Install k3d
       shell: powershell
       run: |
         choco install k3d -y
         k3d version
 
-    - name: Install kubectl (Windows)
+    # ---------------- Install kubectl ----------------
+    - name: Install kubectl
       shell: powershell
       run: |
         choco install kubernetes-cli -y
         kubectl version --client
 
     # ---------------- Create k3d cluster if not exists ----------------
-    - name: Create k3d cluster (if not exists)
+    - name: Create k3d cluster
       shell: powershell
       run: |
         $cluster = k3d cluster list | Select-String "branchpickingsystem"
@@ -45,9 +46,10 @@ jobs:
     - name: Configure kubeconfig
       shell: powershell
       run: |
-        $kubePath = "$PWD\kubeconfig"
+        $kubePath = "$PWD/kubeconfig"
         [System.IO.File]::WriteAllBytes($kubePath, [System.Convert]::FromBase64String("${{ secrets.KUBECONFIG_BASE64 }}"))
         $env:KUBECONFIG = $kubePath
+        kubectl config view
         kubectl get nodes
 
     # ---------------- Apply Kubernetes manifests ----------------
@@ -57,7 +59,7 @@ jobs:
         kubectl apply -f k8s/
 
     # ---------------- Update images ----------------
-    - name: Update images
+    - name: Update deployment images
       shell: powershell
       run: |
         $services = @(
@@ -74,5 +76,6 @@ jobs:
     - name: Verify rollout
       shell: powershell
       run: |
-        kubectl rollout status deployment/api-gateway
-        kubectl rollout status deployment/order-service
+        foreach ($svc in @("api-gateway","order-service")) {
+          kubectl rollout status deployment/$svc
+        }
