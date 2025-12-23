@@ -1,82 +1,36 @@
-name: CI - Build All Microservices
+name: CI - Build & Push Eureka
 
 on:
   push:
-    branches: ["main"]
-  pull_request:
-    branches: ["main"]
+    branches: [ "main" ]
 
 env:
-  REGISTRY: docker.io
-  IMAGE_TAG: ${{ github.sha }}
+  DOCKERHUB_USERNAME: harsha79
+  IMAGE_NAME: eureka-server
 
 jobs:
-  ci:
+  build:
     runs-on: self-hosted
 
     steps:
-    # =====================================================
-    # 1️⃣ Checkout Source
-    # =====================================================
-    - name: Checkout repository
+    - name: Checkout
       uses: actions/checkout@v4
 
-    # =====================================================
-    # 2️⃣ Setup Java 17
-    # =====================================================
-    - name: Set up JDK 17
+    - name: Set up JDK
       uses: actions/setup-java@v4
       with:
         distribution: temurin
         java-version: '17'
 
-    # =====================================================
-    # 3️⃣ Maven Build (All Modules)
-    # =====================================================
-    - name: Maven Build
-      shell: powershell
+    - name: Build JAR
+      run: mvn clean package -DskipTests
+
+    - name: Docker login
       run: |
-        mvn clean package -DskipTests
+        docker login -u ${{ secrets.DOCKERHUB_USERNAME }} `
+          -p ${{ secrets.DOCKERHUB_TOKEN }}
 
-    # =====================================================
-    # 4️⃣ Docker Login
-    # =====================================================
-    - name: Docker Login
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-    # =====================================================
-    # 5️⃣ Build & Push Docker Images
-    # =====================================================
-    - name: Build and Push Microservices
-      shell: powershell
-      env:
-        DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+    - name: Build & Push image
       run: |
-        $services = @{
-          "eureka-server"          = "EurekaServerApp"
-          "config-server"          = "ConfigServerApp"
-          "api-gateway"            = "API-Gateway"
-          "order-service"          = "OrderServiceApplication"
-          "product-service"        = "ProductServiceApplication"
-          "payment-service"        = "PaymentApplication"
-          "analytics-service"      = "AnalyticsService"
-          "notification-service"   = "NotificationService"
-          "user-registration"      = "UserRegistration"
-          "consolidation-service"  = "ConsolidationService"
-        }
-
-        foreach ($svc in $services.Keys) {
-          $path = $services[$svc]
-          Write-Host "🚀 Building $svc from $path"
-
-          docker build `
-            -t "${env:REGISTRY}/${env:DOCKERHUB_USERNAME}/${svc}:${env:IMAGE_TAG}" `
-            -t "${env:REGISTRY}/${env:DOCKERHUB_USERNAME}/${svc}:ci" `
-            $path
-
-          docker push "${env:REGISTRY}/${env:DOCKERHUB_USERNAME}/${svc}:${env:IMAGE_TAG}"
-          docker push "${env:REGISTRY}/${env:DOCKERHUB_USERNAME}/${svc}:ci"
-        }
+        docker build -t harsha79/eureka-server:${{ github.sha }} .
+        docker push harsha79/eureka-server:${{ github.sha }}
