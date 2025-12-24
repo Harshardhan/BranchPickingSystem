@@ -24,18 +24,16 @@ jobs:
         Write-Host " GitHub Actions CD started"
         Write-Host "======================================"
 
-        # 1️⃣ Apply base manifests (safe to re-apply)
+        # Apply manifests
         kubectl apply -f k8s/eureka-server.yml
         kubectl apply -f k8s/eureka-blue.yml
         kubectl apply -f k8s/eureka-green.yml
 
-        # 2️⃣ Detect active color from Service
+        # Detect active color
         $active = kubectl get svc eureka-server `
           -o jsonpath="{.spec.selector.color}"
 
-        if (-not $active) {
-          $active = "blue"
-        }
+        if (-not $active) { $active = "blue" }
 
         if ($active -eq "blue") {
           $target = "green"
@@ -43,21 +41,21 @@ jobs:
           $target = "blue"
         }
 
-        Write-Host "Active color  : $active"
-        Write-Host "Target color  : $target"
+        Write-Host "Active color : $active"
+        Write-Host "Target color : $target"
 
-        # 3️⃣ Get IMAGE TAG from CI commit
+        # Use image built by CI
         $sha = "${{ github.event.workflow_run.head_sha }}"
-        Write-Host "Deploying image tag: $sha"
+        $image = "$env:IMAGE_NAME:$sha"
 
-        # 4️⃣ Update image (FORCES new rollout)
+        Write-Host "Deploying image: $image"
+
         kubectl set image deployment/eureka-$target `
-          eureka-server=$env:IMAGE_NAME:$sha
+          eureka-server=$image
 
-        # 5️⃣ Wait for rollout
         kubectl rollout status deployment/eureka-$target
 
-        # 6️⃣ Label & annotate (to PROVE GitHub Actions deployed it)
+        # Mark deployment source
         kubectl label deployment eureka-$target `
           deployed-by=github-actions --overwrite
 
@@ -67,10 +65,10 @@ jobs:
           github-actor="${{ github.actor }}" `
           --overwrite
 
-        # 7️⃣ Switch traffic
+        # Switch service traffic
         kubectl patch svc eureka-server `
           -p '{"spec":{"selector":{"app":"eureka","color":"'$target'"}}}'
 
         Write-Host "======================================"
-        Write-Host " Deployment completed via GitHub Actions"
+        Write-Host " Deployment completed successfully"
         Write-Host "======================================"
