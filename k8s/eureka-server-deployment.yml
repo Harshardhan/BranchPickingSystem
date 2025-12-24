@@ -12,9 +12,11 @@ spec:
       labels:
         app: eureka-server
     spec:
+      imagePullSecrets:
+        - name: dockerhub-secret
       containers:
         - name: eureka-server
-          image: harsha79/eureka-server:ci
+          image: harsha79/eureka-server:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8761

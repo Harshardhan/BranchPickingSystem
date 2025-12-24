@@ -12,9 +12,11 @@ spec:
       labels:
         app: payment-service
     spec:
+     imagePullSecrets:
+       - name: dockerhub-secret
       containers:
         - name: payment-service
-          image: harsha79/payment-service:ci
+          image: harsha79/payment-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8087

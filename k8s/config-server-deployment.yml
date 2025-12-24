@@ -12,9 +12,11 @@ spec:
       labels:
         app: config-server
     spec:
+      imagePullSecrets:
+        - name: dockerhub-secret
       containers:
         - name: config-server
-          image: harsha79/config-server:ci
+          image: harsha79/config-server:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8888

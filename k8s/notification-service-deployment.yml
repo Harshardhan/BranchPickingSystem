@@ -12,9 +12,11 @@ spec:
       labels:
         app: notification-service
     spec:
+     imagePullSecrets:
+       - name: dockerhub-secret
       containers:
         - name: notification-service
-          image: harsha79/notification-service:ci
+          image: harsha79/notification-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8085

@@ -12,9 +12,11 @@ spec:
       labels:
         app: order-service
     spec:
+     imagePullSecrets:
+       - name: dockerhub-secret
       containers:
         - name: order-service
-          image: harsha79/order-service:ci
+          image: harsha79/order-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8081

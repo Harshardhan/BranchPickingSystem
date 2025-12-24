@@ -12,9 +12,11 @@ spec:
       labels:
         app: product-service
     spec:
+     imagePullSecrets:
+       - name: dockerhub-secret
       containers:
         - name: product-service
-          image: harsha79/product-service:ci
+          image: harsha79/product-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8082

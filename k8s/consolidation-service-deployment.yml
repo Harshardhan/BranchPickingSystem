@@ -12,9 +12,11 @@ spec:
       labels:
         app: consolidation-service
     spec:
+     imagePullSecrets:
+       - name: dockerhub-secret
       containers:
         - name: consolidation-service
-          image: harsha79/consolidation-service:ci
+          image: harsha79/consolidation-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8084

@@ -12,9 +12,11 @@ spec:
       labels:
         app: analytics-service
     spec:
+     imagePullSecrets:
+       - name: dockerhub-secret
       containers:
         - name: analytics-service
-          image: harsha79/analytics-service:ci
+          image: harsha79/analytics-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8087

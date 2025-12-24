@@ -12,9 +12,11 @@ spec:
       labels:
         app: user-registration
     spec:
+     imagePullSecrets:
+       - name: dockerhub-secret
       containers:
         - name: user-registration
-          image: harsha79/user-registration:ci
+          image: harsha79/user-registration:latest
           imagePullPolicy: Always
 
           ports:
