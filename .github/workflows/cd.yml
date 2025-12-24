@@ -44,7 +44,7 @@ jobs:
 
         kubectl rollout status deployment/eureka-$target
 
-        Write-Host "Labeling deployment as GitHub Actions"
+        Write-Host "Labeling deployment (CI/CD identification)"
         kubectl label deployment eureka-$target `
           deployed-by=github-actions --overwrite
 
