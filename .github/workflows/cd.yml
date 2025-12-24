@@ -1,0 +1,76 @@
+name: CD - Eureka Blue Green
+
+on:
+  workflow_run:
+    workflows: ["CI - Build & Push Eureka"]
+    types:
+      - completed
+
+env:
+  IMAGE_NAME: harsha79/eureka-server
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Deploy Eureka Blue-Green
+      shell: powershell
+      run: |
+        Write-Host "======================================"
+        Write-Host " GitHub Actions CD started"
+        Write-Host "======================================"
+
+        # 1️⃣ Apply base manifests (safe to re-apply)
+        kubectl apply -f k8s/eureka-server.yml
+        kubectl apply -f k8s/eureka-blue.yml
+        kubectl apply -f k8s/eureka-green.yml
+
+        # 2️⃣ Detect active color from Service
+        $active = kubectl get svc eureka-server `
+          -o jsonpath="{.spec.selector.color}"
+
+        if (-not $active) {
+          $active = "blue"
+        }
+
+        if ($active -eq "blue") {
+          $target = "green"
+        } else {
+          $target = "blue"
+        }
+
+        Write-Host "Active color  : $active"
+        Write-Host "Target color  : $target"
+
+        # 3️⃣ Get IMAGE TAG from CI commit
+        $sha = "${{ github.event.workflow_run.head_sha }}"
+        Write-Host "Deploying image tag: $sha"
+
+        # 4️⃣ Update image (FORCES new rollout)
+        kubectl set image deployment/eureka-$target `
+          eureka-server=$env:IMAGE_NAME:$sha
+
+        # 5️⃣ Wait for rollout
+        kubectl rollout status deployment/eureka-$target
+
+        # 6️⃣ Label & annotate (to PROVE GitHub Actions deployed it)
+        kubectl label deployment eureka-$target `
+          deployed-by=github-actions --overwrite
+
+        kubectl annotate deployment eureka-$target `
+          github-run-id=${{ github.run_id }} `
+          github-workflow="${{ github.workflow }}" `
+          github-actor="${{ github.actor }}" `
+          --overwrite
+
+        # 7️⃣ Switch traffic
+        kubectl patch svc eureka-server `
+          -p '{"spec":{"selector":{"app":"eureka","color":"'$target'"}}}'
+
+        Write-Host "======================================"
+        Write-Host " Deployment completed via GitHub Actions"
+        Write-Host "======================================"
