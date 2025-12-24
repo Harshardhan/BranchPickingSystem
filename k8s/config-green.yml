@@ -14,8 +14,8 @@ spec:
         app: config-server
         color: green
     spec:
-     imagePullSecrets: 
-       - name: dockerhub-secret
+      imagePullSecrets: 
+        - name: dockerhub-secret
       containers:
         - name: eureka
           image: harsha79/config-server:latest

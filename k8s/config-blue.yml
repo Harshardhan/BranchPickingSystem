@@ -14,8 +14,8 @@ spec:
         app: config-server
         color: blue
     spec:
-     imagePullSecrets:
-       - name: dockerhub-secret
+      imagePullSecrets:
+        - name: dockerhub-secret
       containers:
         - name: config-server
           image: harsha79/config-server:latest

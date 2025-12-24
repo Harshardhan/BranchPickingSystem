@@ -24,7 +24,7 @@ jobs:
         kubectl apply -f k8s/eureka-green.yml
 
         $active = kubectl get svc eureka-server `
-          -o jsonpath="{.spec.selector.color}"
+        -o jsonpath="{.spec.selector.color}"
 
         if (-not $active) { $active = "blue" }
 
@@ -33,9 +33,9 @@ jobs:
         Write-Host "Deploying to $target"
 
         kubectl set image deployment/eureka-$target `
-          eureka-server=$env:IMAGE:${{ github.sha }}
+        eureka-server=harsha79/eureka-server:latest
 
         kubectl rollout status deployment/eureka-$target
 
         kubectl patch svc eureka-server `
-          -p "{""spec"":{""selector"":{""app"":""eureka"",""color"":""$target""}}}"
+          -p '{"spec":{"selector":{"app":"eureka","color":"'$target'"}}}'

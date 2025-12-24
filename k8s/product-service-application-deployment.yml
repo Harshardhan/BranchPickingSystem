@@ -12,8 +12,8 @@ spec:
       labels:
         app: product-service
     spec:
-     imagePullSecrets:
-       - name: dockerhub-secret
+      imagePullSecrets:
+        - name: dockerhub-secret
       containers:
         - name: product-service
           image: harsha79/product-service:latest

@@ -14,8 +14,8 @@ spec:
         app: eureka
         color: blue
     spec:
-     imagePullSecrets:
-       - name: dockerhub-secret
+      imagePullSecrets:
+        - name: dockerhub-secret
       containers:
         - name: eureka-server
           image: harsha79/eureka-server:latest

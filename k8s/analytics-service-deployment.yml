@@ -12,8 +12,8 @@ spec:
       labels:
         app: analytics-service
     spec:
-     imagePullSecrets:
-       - name: dockerhub-secret
+      imagePullSecrets:
+        - name: dockerhub-secret
       containers:
         - name: analytics-service
           image: harsha79/analytics-service:latest

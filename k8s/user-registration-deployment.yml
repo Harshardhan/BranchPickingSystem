@@ -12,8 +12,8 @@ spec:
       labels:
         app: user-registration
     spec:
-     imagePullSecrets:
-       - name: dockerhub-secret
+      imagePullSecrets:
+        - name: dockerhub-secret
       containers:
         - name: user-registration
           image: harsha79/user-registration:latest
