@@ -1,4 +1,4 @@
-name: CD - Eureka Blue Green
+name: CD - Eureka Blue-Green
 
 on:
   workflow_run:
@@ -25,7 +25,7 @@ jobs:
         Write-Host "======================================"
 
         # -------------------------
-        # Apply only the service (do not reapply deployments)
+        # Apply only the service
         # -------------------------
         kubectl apply -f k8s/eureka-server.yml
 
@@ -34,7 +34,6 @@ jobs:
         # -------------------------
         $active = kubectl get svc eureka-server -o jsonpath="{.spec.selector.color}"
         if (-not $active) { $active = "blue" }
-
         $target = if ($active -eq "blue") { "green" } else { "blue" }
 
         Write-Host "Active color : $active"
@@ -49,14 +48,14 @@ jobs:
         Write-Host "Deploying image: $image"
 
         # -------------------------
-        # Update image for target deployment
+        # Update deployment image
         # -------------------------
         kubectl set image deployment/eureka-$target eureka-server=$image
 
         # -------------------------
         # Patch deployment pod template labels
         # -------------------------
-        $patch = @"
+        kubectl patch deployment eureka-$target --type merge -p @"
 {
   "spec": {
     "template": {
@@ -71,8 +70,6 @@ jobs:
 }
 "@
 
-        kubectl patch deployment eureka-$target --type merge -p "$patch"
-
         # -------------------------
         # Wait for rollout to finish
         # -------------------------
@@ -81,18 +78,7 @@ jobs:
         # -------------------------
         # Switch service traffic
         # -------------------------
-        $svcPatch = @"
-{
-  "spec": {
-    "selector": {
-      "app": "eureka-server",
-      "color": "$target"
-    }
-  }
-}
-"@
-
-        kubectl patch svc eureka-server -p "$svcPatch"
+        kubectl patch svc eureka-server -p "{\"spec\":{\"selector\":{\"app\":\"eureka-server\",\"color\":\"$target\"}}}"
 
         Write-Host "======================================"
         Write-Host " Deployment completed via GitHub Actions"
