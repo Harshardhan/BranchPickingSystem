@@ -13,15 +13,9 @@ jobs:
     runs-on: self-hosted
 
     steps:
-    # -------------------------
-    # Checkout repository
-    # -------------------------
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # -------------------------
-    # Setup kubeconfig
-    # -------------------------
     - name: Setup kubeconfig
       shell: powershell
       run: |
@@ -30,62 +24,59 @@ jobs:
         [IO.File]::WriteAllBytes("$env:USERPROFILE\.kube\config", $bytes)
         kubectl get nodes
 
-    # -------------------------
-    # Deploy Eureka Blue-Green
-    # -------------------------
     - name: Deploy Eureka Blue-Green
       shell: powershell
       run: |
-        # 1️⃣ Get Git SHA from last CI run
-        $sha = git rev-parse HEAD
+        # Commit SHA from CI
+        $sha = "${{ github.event.workflow_run.head_sha }}"
         Write-Host "Using Git SHA: $sha"
 
-        # 2️⃣ Detect active color
+        # Detect active color
         $active = kubectl get svc eureka-server -o jsonpath="{.spec.selector.color}"
         if (-not $active) { $active = "blue" }
+
         $target = if ($active -eq "blue") { "green" } else { "blue" }
 
         Write-Host "Active color: $active"
         Write-Host "Target color: $target"
 
-        # 3️⃣ Ensure deployments exist (first time only)
+        # Ensure deployments exist
         kubectl apply -f k8s/eureka-blue.yml
         kubectl apply -f k8s/eureka-green.yml
         kubectl apply -f k8s/eureka-server.yml
 
-        # 4️⃣ Tag Docker image with SHA and push
-        docker tag $env:IMAGE_NAME:ci $env:IMAGE_NAME:$sha
-        docker push $env:IMAGE_NAME:$sha
-
-        # 5️⃣ Update Deployment image with SHA
+        # Update deployment image
         kubectl set image deployment/eureka-$target eureka-server=$env:IMAGE_NAME:$sha
 
-        # 6️⃣ Patch Deployment pod template with commit SHA label
+        # Patch deployment pod template labels (commit SHA)
         $patch = @{
-          spec = @{
-            template = @{
-              metadata = @{
-                labels = @{
-                  "commit-sha" = $sha
+            spec = @{
+                template = @{
+                    metadata = @{
+                        labels = @{
+                            "commit-sha" = $sha
+                        }
+                    }
                 }
-              }
             }
-          }
         } | ConvertTo-Json -Depth 10
+
         kubectl patch deployment eureka-$target --type merge -p $patch
 
-        # 7️⃣ Rollout Deployment
+        # Rollout deployment
         kubectl rollout restart deployment/eureka-$target
         kubectl rollout status deployment/eureka-$target
 
-        # 8️⃣ Switch service traffic to target color
-        kubectl patch svc eureka-server --type merge -p @{
-          spec = @{
-            selector = @{
-              app = "eureka-server"
-              color = $target
+        # Switch service traffic to target color
+        $svcPatch = @{
+            spec = @{
+                selector = @{
+                    app = "eureka-server"
+                    color = $target
+                }
             }
-          }
-        } | ConvertTo-Json -Depth 10
+        } | ConvertTo-Json -Depth 5
+
+        kubectl patch svc eureka-server --type merge -p $svcPatch
 
         Write-Host "Deployment completed successfully!"
