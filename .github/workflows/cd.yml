@@ -69,20 +69,23 @@ jobs:
         # Update image
         kubectl set image deployment/eureka-$target eureka-server=$image
 
-        # Patch pod template labels (THIS IS THE KEY FIX)
-        kubectl patch deployment eureka-$target --type merge `
-        -p '{
-          "spec": {
-            "template": {
-              "metadata": {
-                "labels": {
-                  "deployed-by": "github-actions",
-                  "commit-sha": "'$sha'"
-                }
-              }
-            }
-          }
-        }'
+        # -------------------------
+        # Patch pod template labels (SAFE WAY)
+        # -------------------------
+        $patch = @{
+          spec = @{
+            template = @{
+              metadata = @{
+                labels = @{
+                "deployed-by" = "github-actions"
+                "commit-sha"  = $sha
+                          }
+                         }
+                       }
+                      }
+                    } | ConvertTo-Json -Depth 10
+
+        kubectl patch deployment eureka-$target --type merge -p $patch
 
         # Wait for rollout
         kubectl rollout status deployment/eureka-$target
