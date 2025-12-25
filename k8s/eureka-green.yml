@@ -13,7 +13,7 @@ spec:
       labels:
         app: eureka-server
         color: green
-        deployed-by: manual
+        
     spec:
       imagePullSecrets:
         - name: dockerhub-secret
