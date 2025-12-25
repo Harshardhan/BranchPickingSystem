@@ -11,6 +11,8 @@ env:
 
 jobs:
   deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
     runs-on: self-hosted
 
     steps:
@@ -100,7 +102,7 @@ jobs:
             }
           }
         }'
-
+         
         Write-Host "======================================"
         Write-Host " Deployment completed via GitHub Actions"
         Write-Host "======================================"
