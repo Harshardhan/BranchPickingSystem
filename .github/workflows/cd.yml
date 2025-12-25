@@ -25,7 +25,7 @@ jobs:
         Write-Host "======================================"
 
         # -------------------------
-        # Apply service only (do NOT reapply deployments)
+        # Apply only the service (do not reapply deployments)
         # -------------------------
         kubectl apply -f k8s/eureka-server.yml
 
@@ -56,9 +56,22 @@ jobs:
         # -------------------------
         # Patch deployment pod template labels
         # -------------------------
-        kubectl patch deployment eureka-$target `
-          --type merge `
-          -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"deployed-by\":\"github-actions\",\"commit-sha\":\"$sha\"}}}}}"
+        $patch = @"
+{
+  "spec": {
+    "template": {
+      "metadata": {
+        "labels": {
+          "deployed-by": "github-actions",
+          "commit-sha": "$sha"
+        }
+      }
+    }
+  }
+}
+"@
+
+        kubectl patch deployment eureka-$target --type merge -p "$patch"
 
         # -------------------------
         # Wait for rollout to finish
@@ -68,12 +81,21 @@ jobs:
         # -------------------------
         # Switch service traffic
         # -------------------------
-        kubectl patch svc eureka-server `
-          -p "{\"spec\":{\"selector\":{\"app\":\"eureka-server\",\"color\":\"$target\"}}}"
+        $svcPatch = @"
+{
+  "spec": {
+    "selector": {
+      "app": "eureka-server",
+      "color": "$target"
+    }
+  }
+}
+"@
+
+        kubectl patch svc eureka-server -p "$svcPatch"
 
         Write-Host "======================================"
         Write-Host " Deployment completed via GitHub Actions"
         Write-Host "======================================"
-
       env:
         IMAGE_NAME: harsha79/eureka-server
