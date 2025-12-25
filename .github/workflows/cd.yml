@@ -24,10 +24,8 @@ jobs:
         Write-Host " GitHub Actions CD started"
         Write-Host "======================================"
 
-        # Apply manifests
+        # Apply ONLY service (do not reapply deployments)
         kubectl apply -f k8s/eureka-server.yml
-        kubectl apply -f k8s/eureka-blue.yml
-        kubectl apply -f k8s/eureka-green.yml
 
         # Detect active color
         $active = kubectl get svc eureka-server `
@@ -44,30 +42,38 @@ jobs:
         Write-Host "Active color : $active"
         Write-Host "Target color : $target"
 
-        # Use image built by CI
+        # Image from CI
         $sha = "${{ github.event.workflow_run.head_sha }}"
         $image = "$env:IMAGE_NAME:$sha"
 
         Write-Host "Deploying image: $image"
 
+        # Update image
         kubectl set image deployment/eureka-$target `
           eureka-server=$image
 
+        # 🔑 THIS IS THE MOST IMPORTANT PART
+        # Patch POD TEMPLATE (not deployment metadata)
+        kubectl patch deployment eureka-$target `
+          -p '{
+            "spec": {
+              "template": {
+                "metadata": {
+                  "labels": {
+                    "deployed-by": "github-actions",
+                    "commit-sha": "'"$sha"'"
+                  }
+                }
+              }
+            }
+          }'
+
+        # Wait for rollout
         kubectl rollout status deployment/eureka-$target
 
-        # Mark deployment source
-        kubectl label deployment eureka-$target `
-          deployed-by=github-actions --overwrite
-
-        kubectl annotate deployment eureka-$target `
-          github-run-id=${{ github.run_id }} `
-          github-workflow="${{ github.workflow }}" `
-          github-actor="${{ github.actor }}" `
-          --overwrite
-
-        # Switch service traffic
+        # Switch traffic
         kubectl patch svc eureka-server `
-          -p '{"spec":{"selector":{"app":"eureka","color":"'$target'"}}}'
+          -p '{"spec":{"selector":{"app":"eureka-server","color":"'"$target"'"}}}'
 
         Write-Host "======================================"
         Write-Host " Deployment completed successfully"
