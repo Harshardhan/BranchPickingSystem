@@ -27,10 +27,11 @@ jobs:
     - name: Deploy Eureka Blue-Green
       shell: cmd
       run: |
-        REM Get the commit SHA
+        REM 1️⃣ Get the current Git SHA
         for /f "delims=" %%i in ('git rev-parse HEAD') do set SHA=%%i
+        echo Using Git SHA: %SHA%
 
-        REM Detect active color
+        REM 2️⃣ Determine active color
         for /f "tokens=2 delims=:" %%a in ('kubectl get svc eureka-server -o jsonpath="{.spec.selector.color}"') do set ACTIVE=%%a
         if "%ACTIVE%"=="" set ACTIVE=blue
 
@@ -43,22 +44,28 @@ jobs:
         echo Active color: %ACTIVE%
         echo Target color: %TARGET%
 
-        REM Ensure deployments exist (first time only)
+        REM 3️⃣ Ensure deployments exist (first time only)
         kubectl apply -f k8s/eureka-blue.yml
         kubectl apply -f k8s/eureka-green.yml
         kubectl apply -f k8s/eureka-server.yml
 
-        REM Update Deployment image
+        REM 4️⃣ Tag & push Docker image
+        docker tag %IMAGE_NAME%:ci %IMAGE_NAME%:%SHA%
+        docker push %IMAGE_NAME%:%SHA%
+
+        REM 5️⃣ Update Deployment image with SHA
         kubectl set image deployment/eureka-%TARGET% eureka-server=%IMAGE_NAME%:%SHA%
 
-        REM Patch Deployment pod template with commit SHA
+        REM 6️⃣ Patch Deployment pod template with commit SHA label
         kubectl patch deployment eureka-%TARGET% --type merge -p ^
         "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"commit-sha\":\"%SHA%\"}}}}}"
 
-        REM Restart rollout
+        REM 7️⃣ Rollout Deployment
         kubectl rollout restart deployment/eureka-%TARGET%
         kubectl rollout status deployment/eureka-%TARGET%
 
-        REM Switch service traffic
+        REM 8️⃣ Switch service traffic to target color
         kubectl patch svc eureka-server -p ^
         "{\"spec\":{\"selector\":{\"app\":\"eureka-server\",\"color\":\"%TARGET%\"}}}"
+
+        echo Deployment completed successfully!
