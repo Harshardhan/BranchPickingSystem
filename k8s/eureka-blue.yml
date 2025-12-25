@@ -6,12 +6,12 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: eureka
+      app: eureka-server
       color: blue
   template:
     metadata:
       labels:
-        app: eureka
+        app: eureka-server
         color: blue
     spec:
       imagePullSecrets:
