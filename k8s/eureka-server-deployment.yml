@@ -16,7 +16,7 @@ spec:
         - name: dockerhub-secret
       containers:
         - name: eureka-server
-          image: harsha79/eureka-server:latest
+          image: harsha79/eureka-server:ci
           imagePullPolicy: Always
           ports:
             - containerPort: 8761
