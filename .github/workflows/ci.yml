@@ -12,7 +12,7 @@ jobs:
     runs-on: self-hosted
 
     steps:
-    - name: Checkout
+    - name: Checkout repository
       uses: actions/checkout@v4
 
     - name: Set up JDK 17
@@ -22,15 +22,24 @@ jobs:
         java-version: '17'
 
     - name: Build JAR
+      shell: pwsh
       run: mvn clean package -DskipTests
 
     - name: Docker login
+      shell: pwsh
       run: |
-        docker login -u %DOCKERHUB_USERNAME% -p %DOCKERHUB_TOKEN%
+        docker login -u $env:DOCKERHUB_USERNAME -p $env:DOCKERHUB_TOKEN
 
     - name: Build & Push Docker image
+      shell: pwsh
       run: |
-        for /f "delims=" %%i in ('git rev-parse HEAD') do set SHA=%%i
-        docker build -t %IMAGE%:ci -t %IMAGE%:%SHA% .
-        docker push %IMAGE%:ci
-        docker push %IMAGE%:%SHA%
+        # Get current Git SHA
+        $sha = git rev-parse HEAD
+        Write-Host "Git SHA: $sha"
+
+        # Build Docker image with both tags
+        docker build -t $env:IMAGE:ci -t "$env:IMAGE:$sha" .
+
+        # Push both tags
+        docker push $env:IMAGE:ci
+        docker push "$env:IMAGE:$sha"
