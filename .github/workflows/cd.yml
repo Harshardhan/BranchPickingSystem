@@ -1,108 +1,64 @@
-name: CD - Eureka Blue Green
+name: CD - Eureka Blue/Green
 
 on:
   workflow_run:
     workflows: ["CI - Build & Push Eureka"]
-    types:
-      - completed
+    types: [completed]
 
 env:
   IMAGE_NAME: harsha79/eureka-server
 
 jobs:
   deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-
     runs-on: self-hosted
 
     steps:
-    # -------------------------
-    # Checkout
-    # -------------------------
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # -------------------------
-    # Setup kubeconfig
-    # -------------------------
     - name: Setup kubeconfig
       shell: powershell
       run: |
-        Write-Host "Setting up kubeconfig"
         New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.kube" | Out-Null
-
         $bytes = [Convert]::FromBase64String("${{ secrets.KUBECONFIG_B64 }}")
         [IO.File]::WriteAllBytes("$env:USERPROFILE\.kube\config", $bytes)
-
         kubectl get nodes
 
-    # -------------------------
-    # Deploy Eureka (Blue-Green)
-    # -------------------------
     - name: Deploy Eureka Blue-Green
-      shell: powershell
+      shell: cmd
       run: |
-        Write-Host "======================================"
-        Write-Host " GitHub Actions CD started"
-        Write-Host "======================================"
+        REM Get the commit SHA
+        for /f "delims=" %%i in ('git rev-parse HEAD') do set SHA=%%i
 
-        # Ensure deployments exist (ONLY FIRST TIME SAFE)
+        REM Detect active color
+        for /f "tokens=2 delims=:" %%a in ('kubectl get svc eureka-server -o jsonpath="{.spec.selector.color}"') do set ACTIVE=%%a
+        if "%ACTIVE%"=="" set ACTIVE=blue
+
+        if "%ACTIVE%"=="blue" (
+          set TARGET=green
+        ) else (
+          set TARGET=blue
+        )
+
+        echo Active color: %ACTIVE%
+        echo Target color: %TARGET%
+
+        REM Ensure deployments exist (first time only)
         kubectl apply -f k8s/eureka-blue.yml
         kubectl apply -f k8s/eureka-green.yml
-
-        # Apply service
         kubectl apply -f k8s/eureka-server.yml
 
-        # Detect active color
-        $active = kubectl get svc eureka-server -o jsonpath="{.spec.selector.color}"
-        if (-not $active) { $active = "blue" }
+        REM Update Deployment image
+        kubectl set image deployment/eureka-%TARGET% eureka-server=%IMAGE_NAME%:%SHA%
 
-        $target = if ($active -eq "blue") { "green" } else { "blue" }
+        REM Patch Deployment pod template with commit SHA
+        kubectl patch deployment eureka-%TARGET% --type merge -p ^
+        "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"commit-sha\":\"%SHA%\"}}}}}"
 
-        Write-Host "Active color : $active"
-        Write-Host "Target color : $target"
+        REM Restart rollout
+        kubectl rollout restart deployment/eureka-%TARGET%
+        kubectl rollout status deployment/eureka-%TARGET%
 
-        # Image from CI
-        $sha = "${{ github.event.workflow_run.head_sha }}"
-        $image = "$env:IMAGE_NAME:$sha"
-
-        Write-Host "Deploying image: $image"
-
-        # Update image
-        kubectl set image deployment/eureka-$target eureka-server=$image
-
-        # -------------------------
-        # Patch pod template labels (SAFE WAY)
-        # -------------------------
-        $patch = @{
-          spec = @{
-            template = @{
-              metadata = @{
-                labels = @{
-                "deployed-by" = "github-actions"
-                "commit-sha"  = $sha
-                          }
-                         }
-                       }
-                      }
-                    } | ConvertTo-Json -Depth 10
-
-        kubectl patch deployment eureka-$target --type merge -p $patch
-
-        # Wait for rollout
-        kubectl rollout status deployment/eureka-$target
-
-        # Switch service traffic
-        kubectl patch svc eureka-server `
-        -p '{
-          "spec": {
-            "selector": {
-              "app": "eureka-server",
-              "color": "'$target'"
-            }
-          }
-        }'
-         
-        Write-Host "======================================"
-        Write-Host " Deployment completed via GitHub Actions"
-        Write-Host "======================================"
+        REM Switch service traffic
+        kubectl patch svc eureka-server -p ^
+        "{\"spec\":{\"selector\":{\"app\":\"eureka-server\",\"color\":\"%TARGET%\"}}}"
