@@ -12,34 +12,45 @@ jobs:
     runs-on: self-hosted
 
     steps:
-    - name: Checkout repository
+    # -------------------------
+    # Checkout
+    # -------------------------
+    - name: Checkout
       uses: actions/checkout@v4
 
+    # -------------------------
+    # Setup JDK 17
+    # -------------------------
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
         distribution: temurin
         java-version: '17'
 
+    # -------------------------
+    # Build JAR
+    # -------------------------
     - name: Build JAR
-      shell: pwsh
+      shell: powershell
       run: mvn clean package -DskipTests
 
+    # -------------------------
+    # Docker login
+    # -------------------------
     - name: Docker login
-      shell: pwsh
+      shell: powershell
       run: |
         docker login -u $env:DOCKERHUB_USERNAME -p $env:DOCKERHUB_TOKEN
 
+    # -------------------------
+    # Build & Push Docker image
+    # -------------------------
     - name: Build & Push Docker image
-      shell: pwsh
+      shell: powershell
       run: |
-        # Get current Git SHA
         $sha = git rev-parse HEAD
         Write-Host "Git SHA: $sha"
 
-        # Build Docker image with both tags
-        docker build -t $env:IMAGE:ci -t "$env:IMAGE:$sha" .
-
-        # Push both tags
+        docker build -t $env:IMAGE:ci -t $env:IMAGE:$sha .
         docker push $env:IMAGE:ci
-        docker push "$env:IMAGE:$sha"
+        docker push $env:IMAGE:$sha
