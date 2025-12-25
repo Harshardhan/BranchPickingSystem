@@ -12,7 +12,7 @@ jobs:
     runs-on: self-hosted
 
     steps:
-    - name: Checkout repository
+    - name: Checkout
       uses: actions/checkout@v4
 
     - name: Set up JDK 17
@@ -23,7 +23,8 @@ jobs:
 
     - name: Build JAR
       shell: powershell
-      run: mvn clean package -DskipTests
+      run: |
+        mvn clean package -DskipTests
 
     - name: Docker login
       shell: powershell
@@ -33,9 +34,16 @@ jobs:
     - name: Build & Push Docker image
       shell: powershell
       run: |
-        $sha = "${{ github.sha }}"
+        # Ensure git safe directory to avoid ownership issues
+        git config --global --add safe.directory "$PWD"
+
+        # Get current Git SHA
+        $sha = git rev-parse HEAD
         Write-Host "Git SHA: $sha"
 
-        docker build -t $env:IMAGE:ci -t $env:IMAGE:$sha .
+        # Build Docker image with 'ci' tag and Git SHA tag
+        docker build -t $env:IMAGE:ci -t "$env:IMAGE:$sha" .
+
+        # Push images
         docker push $env:IMAGE:ci
-        docker push $env:IMAGE:$sha
+        docker push "$env:IMAGE:$sha"
