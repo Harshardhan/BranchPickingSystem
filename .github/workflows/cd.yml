@@ -9,13 +9,16 @@ env:
   IMAGE_NAME: harsha79/eureka-server
 
 jobs:
-  deploy:
+  setup-and-deploy:
+    name: Setup Environment & Deploy
     runs-on: self-hosted
 
     steps:
-      - name: Checkout repo
+      # 1️⃣ Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2️⃣ Setup kubeconfig
       - name: Setup kubeconfig
         shell: powershell
         run: |
@@ -25,24 +28,28 @@ jobs:
           $bytes = [Convert]::FromBase64String("${{ secrets.KUBECONFIG_B64 }}")
           [IO.File]::WriteAllBytes("$kubeDir\config", $bytes)
 
+          Write-Host "Kubeconfig setup complete."
           kubectl get nodes
 
-      - name: Download SHA artifact from CI
+      # 3️⃣ Download SHA artifact from CI workflow
+      - name: Download SHA artifact
         uses: actions/download-artifact@v3
         with:
           name: sha
           path: .
 
+      # 4️⃣ Read SHA
       - name: Read SHA
         shell: powershell
         run: |
           $SHA = Get-Content ./sha.txt
           Write-Host "Deploying SHA: $SHA"
 
+      # 5️⃣ Deploy Blue-Green
       - name: Deploy Eureka Blue/Green
         shell: powershell
         run: |
-          # Ensure base resources exist
+          # Apply base deployments & service
           kubectl apply -f k8s/eureka-blue.yml
           kubectl apply -f k8s/eureka-green.yml
           kubectl apply -f k8s/eureka-server.yml
@@ -53,17 +60,17 @@ jobs:
 
           $target = if ($active -eq "blue") { "green" } else { "blue" }
 
-          Write-Host "Active: $active"
-          Write-Host "Target: $target"
+          Write-Host "Active color: $active"
+          Write-Host "Target color: $target"
 
-          # Ensure Docker image exists locally
+          # Pull Docker image
           docker pull "${env:IMAGE_NAME}:$SHA"
 
           # Update deployment image
           kubectl set image deployment/eureka-$target `
             eureka-server="${env:IMAGE_NAME}:$SHA"
 
-          # Add commit label using here-string
+          # Patch deployment to add commit label (here-string JSON)
           $patchDeployment = @"
 {
   "spec": {
@@ -77,13 +84,12 @@ jobs:
   }
 }
 "@
-
           kubectl patch deployment eureka-$target --type merge -p $patchDeployment
 
-          # Wait for rollout
+          # Wait for rollout to complete
           kubectl rollout status deployment/eureka-$target
 
-          # Switch traffic to target color using here-string
+          # Patch service to switch traffic
           $patchService = @"
 {
   "spec": {
@@ -94,7 +100,6 @@ jobs:
   }
 }
 "@
-
           kubectl patch svc eureka-server -p $patchService
 
           Write-Host "Deployment completed 🎉"
