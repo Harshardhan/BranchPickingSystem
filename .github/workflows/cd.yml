@@ -27,12 +27,21 @@ jobs:
 
           kubectl get nodes
 
+      - name: Download SHA artifact from CI
+        uses: actions/download-artifact@v3
+        with:
+          name: sha
+          path: .
+
+      - name: Read SHA
+        shell: powershell
+        run: |
+          $SHA = Get-Content ./sha.txt
+          Write-Host "Deploying SHA: $SHA"
+
       - name: Deploy Eureka Blue/Green
         shell: powershell
         run: |
-          $SHA = "${{ github.event.workflow_run.outputs.sha }}"
-          Write-Host "Deploying SHA: $SHA"
-
           # Ensure base resources exist
           kubectl apply -f k8s/eureka-blue.yml
           kubectl apply -f k8s/eureka-green.yml
@@ -47,7 +56,7 @@ jobs:
           Write-Host "Active: $active"
           Write-Host "Target: $target"
 
-          # Ensure image exists
+          # Ensure Docker image exists locally
           docker pull "${env:IMAGE_NAME}:$SHA"
 
           # Update deployment image
@@ -71,10 +80,10 @@ jobs:
 
           kubectl patch deployment eureka-$target --type merge -p $patchDeployment
 
-          # Rollout
+          # Wait for rollout
           kubectl rollout status deployment/eureka-$target
 
-          # Switch traffic using here-string
+          # Switch traffic to target color using here-string
           $patchService = @"
 {
   "spec": {
