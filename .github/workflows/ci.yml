@@ -2,7 +2,7 @@ name: CI - Build & Push Eureka
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 env:
   IMAGE_NAME: harsha79/eureka-server
@@ -17,20 +17,19 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
 
       - name: Build JAR
         run: mvn clean package -DskipTests
 
       - name: Docker Login
-        run: docker login -u $env:DOCKERHUB_USERNAME -p $env:DOCKERHUB_TOKEN
+        run: docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build & Push Image
         run: |
-          if (-not $env:GITHUB_ACTIONS) { exit 1 }
+          SHA=$(git rev-parse --short HEAD)
+          echo "Building image: $SHA"
 
-          $SHA = $env:GITHUB_SHA.Substring(0,7)
-          Write-Host "SHA=$SHA"
-
-          docker build -t $env:IMAGE_NAME:$SHA .
-          docker push $env:IMAGE_NAME:$SHA
+          docker build -t $IMAGE_NAME:ci -t $IMAGE_NAME:$SHA .
+          docker push $IMAGE_NAME:ci
+          docker push $IMAGE_NAME:$SHA
