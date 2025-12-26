@@ -30,9 +30,7 @@ jobs:
       - name: Deploy Eureka Blue/Green
         shell: powershell
         run: |
-          git config --global --add safe.directory "$PWD"
-
-          $SHA = git rev-parse --short HEAD
+          $SHA = "${{ github.event.workflow_run.outputs.sha }}"
           Write-Host "Deploying SHA: $SHA"
 
           # Ensure base resources exist
@@ -53,20 +51,41 @@ jobs:
           docker pull "${env:IMAGE_NAME}:$SHA"
 
           # Update deployment image
-          kubectl set image `
-            deployment/eureka-$target `
+          kubectl set image deployment/eureka-$target `
             eureka-server="${env:IMAGE_NAME}:$SHA"
 
-          # Add commit label
-          kubectl patch deployment eureka-$target `
-            --type merge `
-            -p "{ `"spec`": { `"template`": { `"metadata`": { `"labels`": { `"commit-sha`": `"$SHA`" }}}}}"
+          # Add commit label using here-string
+          $patchDeployment = @"
+{
+  "spec": {
+    "template": {
+      "metadata": {
+        "labels": {
+          "commit-sha": "$SHA"
+        }
+      }
+    }
+  }
+}
+"@
+
+          kubectl patch deployment eureka-$target --type merge -p $patchDeployment
 
           # Rollout
           kubectl rollout status deployment/eureka-$target
 
-          # Switch traffic
-          kubectl patch svc eureka-server `
-            -p "{ `"spec`": { `"selector`": { `"app`": `"eureka-server`", `"color`": `"$target`" }}}"
+          # Switch traffic using here-string
+          $patchService = @"
+{
+  "spec": {
+    "selector": {
+      "app": "eureka-server",
+      "color": "$target"
+    }
+  }
+}
+"@
+
+          kubectl patch svc eureka-server -p $patchService
 
           Write-Host "Deployment completed 🎉"

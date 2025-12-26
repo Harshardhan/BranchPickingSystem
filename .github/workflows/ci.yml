@@ -11,6 +11,9 @@ jobs:
   build:
     runs-on: self-hosted
 
+    outputs:
+      sha: ${{ steps.get-sha.outputs.sha }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -23,28 +26,24 @@ jobs:
 
       - name: Build JAR
         shell: powershell
-        run: |
-          mvn clean package -DskipTests
+        run: mvn clean package -DskipTests
 
       - name: Docker Login
         shell: powershell
         run: |
-          docker login `
-            -u "${env:DOCKERHUB_USERNAME}" `
-            -p "${env:DOCKERHUB_TOKEN}"
+          docker login -u "${env:DOCKERHUB_USERNAME}" -p "${env:DOCKERHUB_TOKEN}"
+
+      - name: Get Commit SHA
+        id: get-sha
+        shell: powershell
+        run: |
+          $sha = git rev-parse --short HEAD
+          Write-Host "Commit SHA: $sha"
+          echo "::set-output name=sha::$sha"
 
       - name: Build & Push Docker Image
         shell: powershell
         run: |
-          git config --global --add safe.directory "$PWD"
-
-          $SHA = git rev-parse --short HEAD
-          Write-Host "Commit SHA: $SHA"
-
-          docker build `
-            -t "${env:IMAGE_NAME}:ci" `
-            -t "${env:IMAGE_NAME}:$SHA" `
-            .
-
+          docker build -t "${env:IMAGE_NAME}:ci" -t "${env:IMAGE_NAME}:${{ steps.get-sha.outputs.sha }}" .
           docker push "${env:IMAGE_NAME}:ci"
-          docker push "${env:IMAGE_NAME}:$SHA"
+          docker push "${env:IMAGE_NAME}:${{ steps.get-sha.outputs.sha }}"
