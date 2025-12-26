@@ -2,7 +2,7 @@ name: CI - Build & Push Eureka
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
 
 env:
   IMAGE_NAME: harsha79/eureka-server
@@ -12,37 +12,25 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
 
       - name: Build JAR
-        shell: powershell
         run: mvn clean package -DskipTests
 
-      - name: Docker login
-        shell: powershell
+      - name: Docker Login
+        run: docker login -u $env:DOCKERHUB_USERNAME -p $env:DOCKERHUB_TOKEN
+
+      - name: Build & Push Image
         run: |
-          docker login -u $env:DOCKERHUB_USERNAME -p $env:DOCKERHUB_TOKEN
+          if (-not $env:GITHUB_ACTIONS) { exit 1 }
 
-      - name: Build & Push Docker Image
-        shell: powershell
-        run: |
-          # Make repo safe for Git commands
-          git config --global --add safe.directory "$PWD"
+          $SHA = $env:GITHUB_SHA.Substring(0,7)
+          Write-Host "SHA=$SHA"
 
-          # Get current commit SHA
-          $sha = git rev-parse HEAD
-          Write-Host "Git SHA: $sha"
-
-          # Build and tag Docker image
-          docker build -t $env:IMAGE_NAME:ci -t "$env:IMAGE_NAME:$sha" .
-
-          # Push images
-          docker push $env:IMAGE_NAME:ci
-          docker push "$env:IMAGE_NAME:$sha"
+          docker build -t $env:IMAGE_NAME:$SHA .
+          docker push $env:IMAGE_NAME:$SHA

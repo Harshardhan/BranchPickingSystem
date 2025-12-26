@@ -1,4 +1,4 @@
-name: CD - Eureka Blue/Green
+name: CD - Eureka Blue Green
 
 on:
   workflow_run:
@@ -13,81 +13,43 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup kubeconfig
-        shell: powershell
         run: |
-          $kubeDir = "$env:USERPROFILE\.kube"
-          New-Item -ItemType Directory -Force -Path $kubeDir | Out-Null
-          $bytes = [Convert]::FromBase64String("${{ secrets.KUBECONFIG_B64 }}")
-          [IO.File]::WriteAllBytes("$kubeDir\config", $bytes)
+          $dir="$env:USERPROFILE\.kube"
+          mkdir $dir -Force | Out-Null
+          [IO.File]::WriteAllBytes("$dir\config",
+            [Convert]::FromBase64String("${{ secrets.KUBECONFIG_B64 }}"))
           kubectl get nodes
 
-      - name: Deploy Eureka Blue/Green
-        shell: powershell
+      - name: Blue Green Deploy
         run: |
-          # Make repo safe for Git
-          git config --global --add safe.directory "$PWD"
+          if (-not $env:GITHUB_ACTIONS) { exit 1 }
 
-          # Get current Git SHA
-          $sha = git rev-parse HEAD
-          Write-Host "Git SHA: $sha"
+          $SHA = $env:GITHUB_SHA.Substring(0,7)
+          Write-Host "Deploying SHA=$SHA"
 
-          # Ensure deployments & service exist
           kubectl apply -f k8s/eureka-blue.yml
           kubectl apply -f k8s/eureka-green.yml
           kubectl apply -f k8s/eureka-server.yml
 
-          # Wait for service
-          do {
-              $svc = kubectl get svc eureka-server -o json 2>$null
-              Start-Sleep -Seconds 2
-          } while (-not $svc)
-          Write-Host "Service eureka-server exists"
-
-          # Determine active color
           $active = kubectl get svc eureka-server -o jsonpath="{.spec.selector.color}"
-          if ([string]::IsNullOrEmpty($active)) { $active = "blue" }
+          if (-not $active) { $active="blue" }
+
           $target = if ($active -eq "blue") { "green" } else { "blue" }
 
-          Write-Host "Active color: $active"
-          Write-Host "Target color: $target"
+          kubectl set image deployment/eureka-$target `
+            eureka-server=$env:IMAGE_NAME:$SHA
 
-          # Build & push Docker image (already pushed by CI, optional)
-          docker pull $env:IMAGE_NAME:$sha
-
-          # Update deployment image
-          kubectl set image deployment/eureka-$target eureka-server="$env:IMAGE_NAME:$sha"
-
-          # Patch deployment with commit SHA label
-          $patch = @{
-              spec = @{
-                  template = @{
-                      metadata = @{
-                          labels = @{
-                              "commit-sha" = "$sha"
-                          }
-                      }
-                  }
-              }
-          } | ConvertTo-Json -Compress
-          kubectl patch deployment eureka-$target --type merge -p $patch
-
-          # Rollout deployment
-          kubectl rollout restart deployment/eureka-$target
           kubectl rollout status deployment/eureka-$target
 
-          # Switch service traffic to target color
-          $svcPatch = @{
-              spec = @{
-                  selector = @{
-                      app = "eureka-server"
-                      color = "$target"
-                  }
+          kubectl patch svc eureka-server -p "
+          {
+            `"spec`": {
+              `"selector`": {
+                `"app`": `"eureka-server`",
+                `"color`": `"$target`"
               }
-          } | ConvertTo-Json -Compress
-          kubectl patch svc eureka-server -p $svcPatch
-
-          Write-Host "Deployment completed successfully!"
+            }
+          }"
