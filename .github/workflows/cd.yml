@@ -1,6 +1,5 @@
 name: CD - Eureka Blue Green
 
-# Allows both automatic and manual triggering
 on:
   workflow_run:
     workflows: ["CI - Build & Push Eureka"]
@@ -11,103 +10,88 @@ env:
   IMAGE_NAME: harsha79/eureka-server
 
 jobs:
-  setup-and-deploy:
-    name: Deploy to K3d Cluster
+  deploy:
+    name: 🚀 Deploy Eureka (Blue-Green)
     runs-on: self-hosted
 
     steps:
-      # 1️⃣ Checkout repository
+      # 1️⃣ Checkout
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup kubeconfig
+      # 2️⃣ Verify runner
+      - name: Runner verification
+        shell: powershell
+        run: |
+          echo "Runner Name: $env:RUNNER_NAME"
+          echo "Runner Labels: $env:RUNNER_LABELS"
+
+      # 3️⃣ Setup kubeconfig
       - name: Setup kubeconfig
         shell: powershell
         run: |
           $kubeDir = "$env:USERPROFILE\.kube"
           New-Item -ItemType Directory -Force -Path $kubeDir | Out-Null
-
           $bytes = [Convert]::FromBase64String("${{ secrets.KUBECONFIG_B64 }}")
           [IO.File]::WriteAllBytes("$kubeDir\config", $bytes)
-
-          Write-Host "Kubeconfig setup complete."
           kubectl get nodes
 
-      # 3️⃣ Download SHA artifact (if triggered by workflow_run)
+      # 4️⃣ Download SHA from CI
       - name: Download SHA artifact
         if: github.event_name == 'workflow_run'
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: sha
           path: .
 
-      # 4️⃣ Read SHA
+      # 5️⃣ Read SHA
       - name: Read SHA
+        id: read-sha
         shell: powershell
         run: |
-          if (Test-Path ./sha.txt) {
+          if (Test-Path "./sha.txt") {
             $SHA = Get-Content ./sha.txt
           } else {
-            # If manually triggered, fallback to current HEAD
             $SHA = git rev-parse --short HEAD
           }
-          Write-Host "Deploying SHA: $SHA"
+          echo "SHA=$SHA"
+          "sha=$SHA" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-      # 5️⃣ Deploy Blue-Green
-      - name: Deploy Eureka Blue/Green
+      # 6️⃣ Blue-Green Deploy
+      - name: Deploy Eureka Blue-Green
         shell: powershell
         run: |
-          # Apply base deployments & service
+          $SHA = "${{ steps.read-sha.outputs.sha }}"
+
           kubectl apply -f k8s/eureka-blue.yml
           kubectl apply -f k8s/eureka-green.yml
           kubectl apply -f k8s/eureka-server.yml
 
-          # Detect active color
           $active = kubectl get svc eureka-server -o jsonpath="{.spec.selector.color}"
           if (-not $active) { $active = "blue" }
 
           $target = if ($active -eq "blue") { "green" } else { "blue" }
 
-          Write-Host "Active color: $active"
-          Write-Host "Target color: $target"
+          echo "Active: $active"
+          echo "Target: $target"
 
-          # Pull Docker image
           docker pull "${env:IMAGE_NAME}:$SHA"
 
-          # Update deployment image
           kubectl set image deployment/eureka-$target `
             eureka-server="${env:IMAGE_NAME}:$SHA"
 
-          # Patch deployment with commit SHA
-          $patchDeployment = @"
-{
-  "spec": {
-    "template": {
-      "metadata": {
-        "labels": {
-          "commit-sha": "$SHA"
-        }
-      }
-    }
-  }
-}
-"@
-          kubectl patch deployment eureka-$target --type merge -p $patchDeployment
-
-          # Wait for rollout to complete
           kubectl rollout status deployment/eureka-$target
 
-          # Patch service to switch traffic to target color
-          $patchService = @"
-{
-  "spec": {
-    "selector": {
-      "app": "eureka-server",
-      "color": "$target"
-    }
-  }
-}
-"@
-          kubectl patch svc eureka-server -p $patchService
+          kubectl patch svc eureka-server --type merge -p "
+          {
+            \"spec\": {
+              \"selector\": {
+                \"app\": \"eureka-server\",
+                \"color\": \"$target\"
+              }
+            }
+          }
+          "
 
-          Write-Host "Deployment completed 🎉"
+          echo "✅ Eureka deployed successfully"
+          
