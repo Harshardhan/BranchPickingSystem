@@ -12,19 +12,24 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Checkout code
+      # 1️⃣ Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2️⃣ Setup Java 17
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Build JAR
+      # 3️⃣ Build JAR
+      - name: Build application
         shell: powershell
-        run: mvn clean package -DskipTests
+        run: |
+          mvn clean package -DskipTests
 
+      # 4️⃣ Docker Login
       - name: Docker Login
         shell: powershell
         run: |
@@ -32,11 +37,12 @@ jobs:
             -u "${env:DOCKERHUB_USERNAME}" `
             -p "${env:DOCKERHUB_TOKEN}"
 
+      # 5️⃣ Build & Push Docker Image
       - name: Build & Push Docker Image
         shell: powershell
         run: |
           $SHA = git rev-parse --short HEAD
-          echo $SHA > sha.txt
+          echo "Building image with tag: $SHA"
 
           docker build `
             -t "${env:IMAGE_NAME}:ci" `
@@ -45,10 +51,3 @@ jobs:
 
           docker push "${env:IMAGE_NAME}:ci"
           docker push "${env:IMAGE_NAME}:$SHA"
-
-      # ✅ THIS WAS MISSING
-      - name: Upload SHA artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: sha
-          path: sha.txt

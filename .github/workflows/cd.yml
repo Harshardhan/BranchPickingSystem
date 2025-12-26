@@ -15,7 +15,7 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      # 1️⃣ Checkout
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -32,36 +32,32 @@ jobs:
         run: |
           $kubeDir = "$env:USERPROFILE\.kube"
           New-Item -ItemType Directory -Force -Path $kubeDir | Out-Null
+
           $bytes = [Convert]::FromBase64String("${{ secrets.KUBECONFIG_B64 }}")
           [IO.File]::WriteAllBytes("$kubeDir\config", $bytes)
+
           kubectl get nodes
 
-      # 4️⃣ Download SHA from CI
-      - name: Download SHA artifact
-        if: github.event_name == 'workflow_run'
-        uses: actions/download-artifact@v4
-        with:
-          name: sha
-          path: .
-
-      # 5️⃣ Read SHA
-      - name: Read SHA
-        id: read-sha
+      # 4️⃣ Resolve commit SHA (VERY IMPORTANT)
+      - name: Resolve image SHA
+        id: sha
         shell: powershell
         run: |
-          if (Test-Path "./sha.txt") {
-            $SHA = Get-Content ./sha.txt
-          } else {
+          $SHA = "${{ github.event.workflow_run.head_sha }}"
+          if (-not $SHA) {
             $SHA = git rev-parse --short HEAD
+          } else {
+            $SHA = $SHA.Substring(0,7)
           }
-          echo "SHA=$SHA"
+
+          echo "Using image tag: $SHA"
           "sha=$SHA" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-      # 6️⃣ Blue-Green Deploy
+      # 5️⃣ Blue-Green Deployment
       - name: Deploy Eureka Blue-Green
         shell: powershell
         run: |
-          $SHA = "${{ steps.read-sha.outputs.sha }}"
+          $SHA = "${{ steps.sha.outputs.sha }}"
 
           kubectl apply -f k8s/eureka-blue.yml
           kubectl apply -f k8s/eureka-green.yml
@@ -72,8 +68,8 @@ jobs:
 
           $target = if ($active -eq "blue") { "green" } else { "blue" }
 
-          echo "Active: $active"
-          echo "Target: $target"
+          echo "Active deployment: $active"
+          echo "Target deployment: $target"
 
           docker pull "${env:IMAGE_NAME}:$SHA"
 
@@ -93,5 +89,4 @@ jobs:
           }
           "
 
-          echo "✅ Eureka deployed successfully"
-          
+          echo "✅ Eureka deployed successfully using Blue-Green strategy"
