@@ -11,9 +11,6 @@ jobs:
   build:
     runs-on: self-hosted
 
-    outputs:
-      sha: ${{ steps.get-sha.outputs.sha }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -31,19 +28,27 @@ jobs:
       - name: Docker Login
         shell: powershell
         run: |
-          docker login -u "${env:DOCKERHUB_USERNAME}" -p "${env:DOCKERHUB_TOKEN}"
-
-      - name: Get Commit SHA
-        id: get-sha
-        shell: powershell
-        run: |
-          $sha = git rev-parse --short HEAD
-          Write-Host "Commit SHA: $sha"
-          echo "::set-output name=sha::$sha"
+          docker login `
+            -u "${env:DOCKERHUB_USERNAME}" `
+            -p "${env:DOCKERHUB_TOKEN}"
 
       - name: Build & Push Docker Image
         shell: powershell
         run: |
-          docker build -t "${env:IMAGE_NAME}:ci" -t "${env:IMAGE_NAME}:${{ steps.get-sha.outputs.sha }}" .
+          $SHA = git rev-parse --short HEAD
+          echo $SHA > sha.txt
+
+          docker build `
+            -t "${env:IMAGE_NAME}:ci" `
+            -t "${env:IMAGE_NAME}:$SHA" `
+            .
+
           docker push "${env:IMAGE_NAME}:ci"
-          docker push "${env:IMAGE_NAME}:${{ steps.get-sha.outputs.sha }}"
+          docker push "${env:IMAGE_NAME}:$SHA"
+
+      # ✅ THIS WAS MISSING
+      - name: Upload SHA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sha
+          path: sha.txt
