@@ -1,15 +1,18 @@
 name: CD - Eureka Blue Green
 
+# Allows both automatic and manual triggering
 on:
-  push:
-    branches: ["main"]
+  workflow_run:
+    workflows: ["CI - Build & Push Eureka"]
+    types: [completed]
+  workflow_dispatch:
 
 env:
   IMAGE_NAME: harsha79/eureka-server
 
 jobs:
   setup-and-deploy:
-    name: Setup Environment & Deploy
+    name: Deploy to K3d Cluster
     runs-on: self-hosted
 
     steps:
@@ -30,8 +33,9 @@ jobs:
           Write-Host "Kubeconfig setup complete."
           kubectl get nodes
 
-      # 3️⃣ Download SHA artifact from CI workflow
+      # 3️⃣ Download SHA artifact (if triggered by workflow_run)
       - name: Download SHA artifact
+        if: github.event_name == 'workflow_run'
         uses: actions/download-artifact@v3
         with:
           name: sha
@@ -41,7 +45,12 @@ jobs:
       - name: Read SHA
         shell: powershell
         run: |
-          $SHA = Get-Content ./sha.txt
+          if (Test-Path ./sha.txt) {
+            $SHA = Get-Content ./sha.txt
+          } else {
+            # If manually triggered, fallback to current HEAD
+            $SHA = git rev-parse --short HEAD
+          }
           Write-Host "Deploying SHA: $SHA"
 
       # 5️⃣ Deploy Blue-Green
@@ -69,7 +78,7 @@ jobs:
           kubectl set image deployment/eureka-$target `
             eureka-server="${env:IMAGE_NAME}:$SHA"
 
-          # Patch deployment to add commit label (here-string JSON)
+          # Patch deployment with commit SHA
           $patchDeployment = @"
 {
   "spec": {
@@ -88,7 +97,7 @@ jobs:
           # Wait for rollout to complete
           kubectl rollout status deployment/eureka-$target
 
-          # Patch service to switch traffic
+          # Patch service to switch traffic to target color
           $patchService = @"
 {
   "spec": {
