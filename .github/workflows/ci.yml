@@ -12,24 +12,39 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
 
       - name: Build JAR
-        run: mvn clean package -DskipTests
+        shell: powershell
+        run: |
+          mvn clean package -DskipTests
 
       - name: Docker Login
-        run: docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build & Push Image
+        shell: powershell
         run: |
-          SHA=$(git rev-parse --short HEAD)
-          echo "Building image: $SHA"
+          docker login `
+            -u "${env:DOCKERHUB_USERNAME}" `
+            -p "${env:DOCKERHUB_TOKEN}"
 
-          docker build -t $IMAGE_NAME:ci -t $IMAGE_NAME:$SHA .
-          docker push $IMAGE_NAME:ci
-          docker push $IMAGE_NAME:$SHA
+      - name: Build & Push Docker Image
+        shell: powershell
+        run: |
+          git config --global --add safe.directory "$PWD"
+
+          $SHA = git rev-parse --short HEAD
+          Write-Host "Commit SHA: $SHA"
+
+          docker build `
+            -t "${env:IMAGE_NAME}:ci" `
+            -t "${env:IMAGE_NAME}:$SHA" `
+            .
+
+          docker push "${env:IMAGE_NAME}:ci"
+          docker push "${env:IMAGE_NAME}:$SHA"
