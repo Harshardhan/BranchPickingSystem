@@ -4,29 +4,18 @@ on:
   workflow_run:
     workflows: ["CI - Build & Push Eureka"]
     types: [completed]
-  workflow_dispatch:
 
 env:
   IMAGE_NAME: harsha79/eureka-server
 
 jobs:
   deploy:
-    name: 🚀 Deploy Eureka (Blue-Green)
     runs-on: self-hosted
 
     steps:
-      # 1️⃣ Checkout repository
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      # 2️⃣ Verify runner
-      - name: Runner verification
-        shell: powershell
-        run: |
-          echo "Runner Name: $env:RUNNER_NAME"
-          echo "Runner Labels: $env:RUNNER_LABELS"
-
-      # 3️⃣ Setup kubeconfig
       - name: Setup kubeconfig
         shell: powershell
         run: |
@@ -38,55 +27,46 @@ jobs:
 
           kubectl get nodes
 
-      # 4️⃣ Resolve commit SHA (VERY IMPORTANT)
-      - name: Resolve image SHA
-        id: sha
+      - name: Deploy Eureka Blue/Green
         shell: powershell
         run: |
-          $SHA = "${{ github.event.workflow_run.head_sha }}"
-          if (-not $SHA) {
-            $SHA = git rev-parse --short HEAD
-          } else {
-            $SHA = $SHA.Substring(0,7)
-          }
+          git config --global --add safe.directory "$PWD"
 
-          echo "Using image tag: $SHA"
-          "sha=$SHA" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          $SHA = git rev-parse --short HEAD
+          Write-Host "Deploying SHA: $SHA"
 
-      # 5️⃣ Blue-Green Deployment
-      - name: Deploy Eureka Blue-Green
-        shell: powershell
-        run: |
-          $SHA = "${{ steps.sha.outputs.sha }}"
-
+          # Ensure base resources exist
           kubectl apply -f k8s/eureka-blue.yml
           kubectl apply -f k8s/eureka-green.yml
           kubectl apply -f k8s/eureka-server.yml
 
+          # Detect active color
           $active = kubectl get svc eureka-server -o jsonpath="{.spec.selector.color}"
           if (-not $active) { $active = "blue" }
 
           $target = if ($active -eq "blue") { "green" } else { "blue" }
 
-          echo "Active deployment: $active"
-          echo "Target deployment: $target"
+          Write-Host "Active: $active"
+          Write-Host "Target: $target"
 
+          # Ensure image exists
           docker pull "${env:IMAGE_NAME}:$SHA"
 
-          kubectl set image deployment/eureka-$target `
+          # Update deployment image
+          kubectl set image `
+            deployment/eureka-$target `
             eureka-server="${env:IMAGE_NAME}:$SHA"
 
+          # Add commit label
+          kubectl patch deployment eureka-$target `
+            --type merge `
+            -p "{ `"spec`": { `"template`": { `"metadata`": { `"labels`": { `"commit-sha`": `"$SHA`" }}}}}"
+
+          # Rollout
           kubectl rollout status deployment/eureka-$target
 
-          kubectl patch svc eureka-server --type merge -p "
-          {
-            \"spec\": {
-              \"selector\": {
-                \"app\": \"eureka-server\",
-                \"color\": \"$target\"
-              }
-            }
-          }
-          "
+          # Switch traffic
+          kubectl patch svc eureka-server `
+            -p "{ `"spec`": { `"selector`": { `"app`": `"eureka-server`", `"color`": `"$target`" }}}"
 
-          echo "✅ Eureka deployed successfully using Blue-Green strategy"
+          Write-Host "Deployment completed 🎉"
