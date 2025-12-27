@@ -27,13 +27,13 @@ jobs:
 
           kubectl get nodes
 
-      - name: Deploy Eureka Blue/Green
+      - name: Blue-Green Deploy Eureka
         shell: powershell
         run: |
           git config --global --add safe.directory "$PWD"
 
           $SHA = git rev-parse --short HEAD
-          Write-Host "Deploying SHA: $SHA"
+          Write-Host "Deploying image SHA: $SHA"
 
           # Ensure base resources exist
           kubectl apply -f k8s/eureka-blue.yml
@@ -46,27 +46,22 @@ jobs:
 
           $target = if ($active -eq "blue") { "green" } else { "blue" }
 
-          Write-Host "Active: $active"
-          Write-Host "Target: $target"
+          Write-Host "Active = $active"
+          Write-Host "Target = $target"
 
           # Ensure image exists
           docker pull "${env:IMAGE_NAME}:$SHA"
 
-          # Update deployment image
+          # Deploy to target color
           kubectl set image `
             deployment/eureka-$target `
             eureka-server="${env:IMAGE_NAME}:$SHA"
 
-          # Add commit label
-          kubectl patch deployment eureka-$target `
-            --type merge `
-            -p "{ `"spec`": { `"template`": { `"metadata`": { `"labels`": { `"commit-sha`": `"$SHA`" }}}}}"
-
-          # Rollout
+          # Wait for rollout
           kubectl rollout status deployment/eureka-$target
 
           # Switch traffic
           kubectl patch svc eureka-server `
-            -p "{ `"spec`": { `"selector`": { `"app`": `"eureka-server`", `"color`": `"$target`" }}}"
+            -p '{ "spec": { "selector": { "app": "eureka-server", "color": "'"$target"'" }}}'
 
-          Write-Host "Deployment completed 🎉"
+          Write-Host "✅ Blue-Green deployment completed"
