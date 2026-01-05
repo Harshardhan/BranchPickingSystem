@@ -19,7 +19,6 @@ import org.springframework.kafka.support.serializer.JsonSerializer;
 
 @Configuration
 @EnableKafka
-@Profile({"default", "dev"})
 
 public class KafkaConfig {
 

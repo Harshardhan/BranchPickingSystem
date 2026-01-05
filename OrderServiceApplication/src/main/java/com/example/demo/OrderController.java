@@ -47,10 +47,10 @@ public class OrderController {
 	@PostMapping
 	@PreAuthorize("hasRole('USER')")
 	public ResponseEntity<Order> placeOrder(@RequestBody @Valid Order order)
-	        throws InValidOrderException, OrderAlreadyExistsException, NumberFormatException {
+	        throws InValidOrderException, OrderAlreadyExistsException, NumberFormatException, InterruptedException {
 
-	    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-	    UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
+	   Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+	   UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
 
 	    Long tokenUserId = principal.getId();
 	    String username = principal.getUsername();
@@ -62,13 +62,13 @@ public class OrderController {
 	    }
 
 	    // ❌ Admin should NOT place orders as customer
-	    boolean isAdmin = auth.getAuthorities()
+	   boolean isAdmin = auth.getAuthorities()
 	            .stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
 
 	    if (isAdmin) {
 	        throw new IdentityMismatchException(
-	                "Admins are not allowed to place customer orders.");
-	    }
+	               "Admins are not allowed to place customer orders.");
+	  }
 
 	    // Validate request details
 	    if (order.getProductId() == null || order.getQuantity() <= 0) {
@@ -76,8 +76,8 @@ public class OrderController {
 	    }
 
 	    // ✅ Set identity safely from JWT
-	    order.setCustomerId(tokenUserId);
-	    order.setUserName(username);
+	   order.setCustomerId(tokenUserId);
+	   order.setUserName(username);
 
 	    Order createdOrder = orderService.placeOrder(order);
 

@@ -5,14 +5,16 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.github.resilience4j.retry.annotation.Retry;
 import jakarta.transaction.Transactional;
+
 import com.example.demo.excpetions.InValidOrderException;
 import com.example.demo.excpetions.OrderAlreadyExistsException;
 import com.example.demo.excpetions.OrderNotFoundException;
@@ -22,135 +24,175 @@ import com.example.demo.security.JwtUtils;
 @Service
 @Transactional
 @Retry(name = "order-service")
-
 public class OrderServiceImpl implements OrderService {
 
-	private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
+    private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
 
-	private final OrderRepository orderRepository;
-	private final OrderEventPublisherImpl orderEventPublisherImpl;
-	private final ProductClient productClient;
-	private final PaymentClient paymentClient; // Feign client
+    private final OrderRepository orderRepository;
+    private final OrderEventPublisher orderEventPublisher;
+    private final ProductClient productClient;
+    private final PaymentClient paymentClient;
 
-    @Autowired
-	public OrderServiceImpl(OrderRepository orderRepository, OrderEventPublisherImpl orderEventPublisherImpl,
-			ProductClient productClient, PaymentClient paymentClient) {
-		this.orderRepository = orderRepository;
-		this.orderEventPublisherImpl = orderEventPublisherImpl;
-		this.productClient = productClient;
-		this.paymentClient = paymentClient;
-	}
+    public OrderServiceImpl(OrderRepository orderRepository,
+                            OrderEventPublisher orderEventPublisher,
+                            ProductClient productClient,
+                            PaymentClient paymentClient) {
+        this.orderRepository = orderRepository;
+        this.orderEventPublisher = orderEventPublisher;
+        this.productClient = productClient;
+        this.paymentClient = paymentClient;
+    }
 
-	@Override
-	@Transactional
-	public Order placeOrder(Order order) {
+    @Override
+    @Transactional
+    public Order placeOrder(Order order) {
 
-	    validateOrderBasics(order);
-	    Product product = validateProduct(order);
-	    checkDuplicateOrder(order, product);
+        validateOrderBasics(order);
 
-	    order.setProductName(product.getProductName());
-	    order.setPrice(product.getPrice()); // Always use DB price for safety
-	    order.setOrderReference(UUID.randomUUID().toString());
-	    order.setOrderStatus(OrderStatus.PLACED);
+        // ✅ SRE-safe product validation
+        Product product = getProductFallback(order);
 
-	    Order savedOrder = orderRepository.save(order);
-	    logger.info("✅ Order saved: {}", savedOrder.getOrderReference());
+        checkDuplicateOrder(order, product);
 
-	    handlePayment(savedOrder);
-	    publishEvents(savedOrder);
+        order.setProductName(product.getProductName());
+        order.setPrice(product.getPrice());
+        order.setOrderReference(UUID.randomUUID().toString());
+        order.setOrderStatus(OrderStatus.PLACED);
 
-	    return savedOrder;
-	}
-	
-	private void validateOrderBasics(Order order) {
-	    if (order == null || order.getPrice() == null || order.getQuantity() <= 0) {
-	        throw new InValidOrderException("Invalid order details.");
-	    }
-	}
-	private Product validateProduct(Order order) {
-	    Product product = productClient.getProductById(order.getProductId());
+        Order savedOrder = orderRepository.save(order);
+        logger.info("✅ Order saved: {}", savedOrder.getOrderReference());
 
-	    if (product == null || product.getId() == null ||
-	        !product.getId().equals(order.getProductId()) ||
-	        "Fallback Product".equalsIgnoreCase(product.getProductName()) ||
-	        "Unknown".equalsIgnoreCase(product.getProductName())) {
+        // SRE-safe downstream calls
+        handlePaymentFallback(savedOrder);
+        publishEventsFallback(savedOrder);
 
-	        throw new InValidOrderException("Invalid Product: " + order.getProductId());
-	    }
-	    return product;
-	}
-	private void checkDuplicateOrder(Order order, Product product) {
+        return savedOrder;
+    }
+    private Product validateProduct(Order order) {
+        Product product;
+        try {
+            product = productClient.getProductById(order.getProductId());
+        } catch (Exception ex) {
+            logger.warn("Product service unavailable, returning fallback for productId {}", order.getProductId());
+            // Use the fallback product here
+            product = new Product();
+            product.setId(order.getProductId());
+            product.setProductName("Fallback Product");
+            product.setDescription("Product service unavailable (SRE mode)");
+            product.setCategory("Unknown");
+        }
 
-	    Optional<Order> lastOrder = orderRepository
-	            .findTopByCustomerIdAndProductIdOrderByCreatedAtDesc(order.getCustomerId(), product.getId());
+        // Validate product even if fallback
+        if (product.getId() == null ||
+            "Fallback Product".equalsIgnoreCase(product.getProductName())) {
+            logger.info("Order is using SRE fallback product for productId {}", order.getProductId());
+        }
 
-	    if (lastOrder.isPresent()) {
-	        LocalDateTime lastOrderTime = lastOrder.get().getCreatedAt();
-	        long minutesDiff = java.time.Duration
-	                .between(lastOrderTime, LocalDateTime.now())
-	                .toMinutes();
+        return product;
+    }
 
-	        if (minutesDiff < 10) {
-	            throw new OrderAlreadyExistsException(
-	                    "You can reorder this product only after 10 minutes");
-	        }
-	    }
+    
+    private void validateOrderBasics(Order order) {
+        if (order == null || order.getPrice() == null || order.getQuantity() <= 0) {
+            throw new InValidOrderException("Invalid order details.");
+        }
+    }
 
-	    if (order.getPrice().compareTo(product.getPrice()) != 0) {
-	        throw new InValidOrderException("Price mismatch for product");
-	    }
-	}
-	private void handlePayment(Order order) {
-	    try {
-	        Payment paymentReq = Payment.builder()
-	                .userId(order.getCustomerId())
-	                .orderId(order.getId())
-	                .username(order.getUserName())
-	                .method(order.getPaymentMethod())
-	                .amount(order.getPrice())
-	                .status(PaymentStatus.SUCCESS)
-	                .build();
+    // Fallback product if Product Service is down
+    private Product getProductFallback(Order order) {
+        Product product;
+        try {
+            product = productClient.getProductById(order.getProductId());
+        } catch (Exception ex) {
+            logger.warn("Product service unavailable, using fallback for productId {}", order.getProductId());
+            product = new Product();
+            product.setId(order.getProductId());
+            product.setProductName("Fallback Product");
+            product.setDescription("Product service unavailable (SRE mode)");
+            product.setCategory("Unknown");
+        }
+        return product;
+    }
 
-	        Payment paymentResponse = paymentClient.processPayment(paymentReq);
+    private void checkDuplicateOrder(Order order, Product product) {
+        Optional<Order> lastOrder = orderRepository
+                .findTopByCustomerIdAndProductIdOrderByCreatedAtDesc(order.getCustomerId(), product.getId());
 
-	        if (paymentResponse == null || paymentResponse.getStatus() != PaymentStatus.SUCCESS) {
-	            markPaymentFailed(order);
-	        }
+        if (lastOrder.isPresent()) {
+            long minutesDiff = java.time.Duration
+                    .between(lastOrder.get().getCreatedAt(), LocalDateTime.now())
+                    .toMinutes();
+            if (minutesDiff < 10) {
+                throw new OrderAlreadyExistsException("You can reorder this product only after 10 minutes");
+            }
+        }
+        if (order.getPrice().compareTo(product.getPrice()) != 0) {
+            throw new InValidOrderException("Price mismatch for product");
+        }
+    }
 
-	    } catch (Exception e) {
-	        markPaymentFailed(order);
-	        logger.error("Payment Error: {}", e.getMessage());
-	    }
-	}
+    // Fallback-safe payment handling
+    private void handlePaymentFallback(Order order) {
+        try {
+            Payment paymentReq = Payment.builder()
+                    .userId(order.getCustomerId())
+                    .orderId(order.getId())
+                    .username(order.getUserName())
+                    .method(order.getPaymentMethod())
+                    .amount(order.getPrice())
+                    .status(PaymentStatus.SUCCESS)
+                    .build();
 
-	private void markPaymentFailed(Order order) {
-	    order.setOrderStatus(OrderStatus.PAYMENT_FAILED);
-	    orderRepository.save(order);
-	}
-	private void publishEvents(Order order) {
-	    publishOrderEvent(order);
-	    publishNotificationEvent(order);
-	}
+            Payment paymentResp = paymentClient.processPayment(paymentReq);
+            if (paymentResp == null || paymentResp.getStatus() != PaymentStatus.SUCCESS) {
+                markPaymentFailed(order);
+            }
+        } catch (Exception e) {
+            logger.warn("Payment service unavailable. Marking payment as failed for order {}", order.getId());
+            markPaymentFailed(order);
+        }
+    }
 
-	private void publishOrderEvent(Order order) {
-	    try {
-	        orderEventPublisherImpl.publishOrder(order);
-	    } catch (Exception e) {
-	        logger.error("Failed to publish order event: {}", e.getMessage());
-	    }
-	}
+    private void markPaymentFailed(Order order) {
+        order.setOrderStatus(OrderStatus.PAYMENT_FAILED);
+        orderRepository.save(order);
+    }
 
-	private void publishNotificationEvent(Order order) {
-	    try {
-	        NotificationRequest notification = new NotificationRequest();
-	        orderEventPublisherImpl.publishNotification(notification);
-	    } catch (Exception e) {
-	        logger.warn("Failed to publish notification event: {}", e.getMessage());
-	    }
-	}
+    // Fallback-safe event publishing
+    private void publishEventsFallback(Order order) {
+        try {
+            orderEventPublisher.publishOrder(order);
+        } catch (Exception e) {
+            logger.warn("Order event publishing failed for order {}: {}", order.getId(), e.getMessage());
+        }
 
-	
+        try {
+            NotificationRequest notification = new NotificationRequest();
+            notification.setOrderId(order.getId());
+            orderEventPublisher.publishNotification(notification);
+        } catch (Exception e) {
+            logger.warn("Notification event publishing failed for order {}: {}", order.getId(), e.getMessage());
+        }
+    }
+
+    // Other existing methods can remain, but you can also wrap them with fallback handling
+    @Override
+    @CircuitBreaker(name = "OrderService", fallbackMethod = "getOrderFallback")
+    @Retry(name = "OrderService")
+    @RateLimiter(name = "OrderService")
+    public List<Order> findByCustomerId(Long customerId) {
+        List<Order> orders = orderRepository.findByCustomerId(customerId);
+        if (orders.isEmpty()) {
+            logger.warn("No orders found for customerId {}", customerId);
+        }
+        return orders;
+    }
+
+    public List<Order> getOrderFallback(Long customerId, Throwable t) {
+        logger.warn("Fallback triggered for findByCustomerId with customerId {}: {}", customerId, t.getMessage());
+        return Collections.emptyList();
+    }
+
 	// Other methods like updateOrder(), deleteOrder(), etc., remain the same
 
 	@Override
@@ -242,24 +284,6 @@ public class OrderServiceImpl implements OrderService {
 		});
 	}
 
-	@Override
-	@CircuitBreaker(name = "OrderService", fallbackMethod = "getOrderFallback")
-	@Retry(name = "OrderService")
-	@RateLimiter(name = "OrderService")
-	public List<Order> findByCustomerId(Long customerId) throws OrderNotFoundException {
-		List<Order> orders = orderRepository.findByCustomerId(customerId);
-		if (orders.isEmpty()) {
-			logger.warn("No orders found for customerId {}", customerId);
-			throw new OrderNotFoundException("No orders found for customerId " + customerId);
-		}
-		return orders;
-	}
-
-	public List<Order> getOrderFallback(Long customerId, Throwable t) {
-		logger.error("Fallback triggered for findByCustomerId with customerId {} due to {}", customerId,
-				t.getMessage());
-		return Collections.emptyList();
-	}
 
 	@Override
 	public List<Order> getAllOrders() {

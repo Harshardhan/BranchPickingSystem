@@ -1,10 +1,12 @@
 package com.example.demo;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import com.example.demo.OrderService;
 import com.example.demo.security.*;
 @Component("orderSecurity")
+
 public class OrderSecurity {
 
     private final OrderService orderService;

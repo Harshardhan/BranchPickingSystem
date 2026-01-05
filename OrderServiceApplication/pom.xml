@@ -84,10 +84,6 @@
 			<artifactId>logstash-logback-encoder</artifactId>
 			<version>7.4</version> <!-- Use latest stable version -->
 		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-security</artifactId>
-		</dependency>
 
 		<dependency>
 			<groupId>io.zipkin.reporter2</groupId>

@@ -4,6 +4,7 @@ package com.example.demo;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -41,6 +42,8 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // always stateless
             .authorizeHttpRequests(auth -> auth
             	    .requestMatchers(HttpMethod.GET, "/api/orders/**").permitAll()
+                    .requestMatchers("/actuator/**").permitAll()
+
             	    .anyRequest().authenticated()
             	)
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

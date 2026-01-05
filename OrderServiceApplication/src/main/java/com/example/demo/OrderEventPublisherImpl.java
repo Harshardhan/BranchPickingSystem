@@ -9,7 +9,6 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 @Component
-@Profile({"default", "dev"})
 
 public class OrderEventPublisherImpl implements OrderEventPublisher {
 

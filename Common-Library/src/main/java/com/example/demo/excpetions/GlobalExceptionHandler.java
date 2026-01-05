@@ -1,7 +1,8 @@
 package com.example.demo.excpetions;
 
 import java.time.LocalDateTime;
-
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -17,6 +18,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
@@ -24,6 +27,21 @@ public class GlobalExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    
+    @ExceptionHandler(DownstreamServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleDownstreamFailure(
+            DownstreamServiceUnavailableException ex,
+            WebRequest request) {
+
+        return buildErrorResponse(
+                "Service Unavailable",
+                ex.getMessage(),
+                HttpStatus.SERVICE_UNAVAILABLE,
+                request
+        );
+    }
+    
+    
     // 1️⃣ Validation Errors
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex, WebRequest request) {

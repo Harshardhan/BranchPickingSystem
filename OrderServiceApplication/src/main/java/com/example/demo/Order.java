@@ -62,6 +62,8 @@ public class Order {
 	// ✔ ENUM VALIDATION
 	@NotNull(message = "Payment method is required")
 	@Enumerated(EnumType.STRING)
+	@Column(columnDefinition = "VARCHAR(50)")
+
 	private PaymentMethod paymentMethod;
 
 	@Enumerated(EnumType.STRING)

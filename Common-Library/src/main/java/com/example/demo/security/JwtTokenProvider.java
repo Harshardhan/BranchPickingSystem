@@ -2,6 +2,8 @@ package com.example.demo.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -11,6 +13,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
+@Profile("!sre")
+
 public class JwtTokenProvider {
 
     private final String SECRET = "MY_SECURED_JWT_SECRET_KEY_256BITS_EXAMPLE_1234"; 

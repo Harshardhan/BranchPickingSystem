@@ -10,7 +10,7 @@ import com.example.demo.excpetions.UnauthorizedOrderAccessException;
 
 public interface OrderService {
 
-	public Order placeOrder(Order order)throws InValidOrderException, OrderAlreadyExistsException, NumberFormatException ;
+	public Order placeOrder(Order order)throws InValidOrderException, OrderAlreadyExistsException, NumberFormatException, InterruptedException ;
 	
 	public List<Order> processOrder(Long id)throws OrderProcessingException;
 	

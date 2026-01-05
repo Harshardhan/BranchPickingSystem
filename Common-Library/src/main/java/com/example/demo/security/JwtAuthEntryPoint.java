@@ -2,6 +2,7 @@ package com.example.demo.security;
 
 import java.io.IOException;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
@@ -12,6 +13,8 @@ import jakarta.servlet.http.HttpServletResponse;
 
 //security/JwtAuthEntryPoint.java
 @Component
+@Profile("!sre")
+
 public class JwtAuthEntryPoint implements AuthenticationEntryPoint {
 
 	@Override

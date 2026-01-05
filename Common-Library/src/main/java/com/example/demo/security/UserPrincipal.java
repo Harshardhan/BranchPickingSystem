@@ -1,9 +1,11 @@
 package com.example.demo.security;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.core.GrantedAuthority;
 
 import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
+@Profile("!sre")
 
 public class UserPrincipal implements UserDetails {
     
