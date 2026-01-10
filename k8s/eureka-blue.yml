@@ -6,12 +6,12 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: eureka-server
+      app: eureka-blue
       color: blue
   template:
     metadata:
       labels:
-        app: eureka-server
+        app: eureka-blue
         color: blue
         
     spec:
