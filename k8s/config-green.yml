@@ -17,7 +17,7 @@ spec:
       imagePullSecrets: 
         - name: dockerhub-secret
       containers:
-        - name: eureka
+        - name: config-server
           image: harsha79/config-server:latest
           imagePullPolicy: Always
           ports:

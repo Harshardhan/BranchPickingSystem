@@ -1,7 +1,7 @@
 # =========================
 # Maven / Gradle build output
 # =========================
-**/target/
+
 **/logs/
 *.log
 *.tmp

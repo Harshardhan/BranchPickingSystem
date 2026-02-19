@@ -6,14 +6,13 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: eureka-blue
+      app: eureka-server
       color: blue
   template:
     metadata:
       labels:
-        app: eureka-blue
+        app: eureka-server
         color: blue
-        
     spec:
       imagePullSecrets:
         - name: dockerhub-secret
@@ -23,10 +22,3 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 8761
-          resources:
-            requests:
-              memory: "256Mi"
-              cpu: "250m"
-            limits:
-              memory: "512Mi"
-              cpu: "500m"
