@@ -10,6 +10,7 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -36,7 +37,7 @@ public class OrderServiceImpl implements OrderService {
     private final PaymentClient paymentClient;
 
     public OrderServiceImpl(OrderRepository orderRepository,
-                            OrderEventPublisher orderEventPublisher,
+    		@Qualifier("orderEventPublisherImpl")OrderEventPublisher orderEventPublisher,
                             ProductClient productClient,
                             PaymentClient paymentClient) {
         this.orderRepository = orderRepository;
