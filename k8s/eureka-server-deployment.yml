@@ -3,27 +3,17 @@ kind: Deployment
 metadata:
   name: eureka-server
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
-      app: eureka-server
+      app: eureka
   template:
     metadata:
       labels:
-        app: eureka-server
+        app: eureka
     spec:
-      imagePullSecrets:
-        - name: dockerhub-secret
       containers:
-        - name: eureka-server
-          image: harsha79/eureka-server:ci
-          imagePullPolicy: Always
+        - name: eureka
+          image: 992382454878.dkr.ecr.ap-south-1.amazonaws.com/branchpickingsystem-eureka-server:latest
           ports:
             - containerPort: 8761
-          resources:
-            requests:
-              memory: "256Mi"
-              cpu: "250m"
-            limits:
-              memory: "512Mi"
-              cpu: "500m"

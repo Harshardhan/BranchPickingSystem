@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+
+  eureka-server:
+    image: harsha79/eureka-server:latest
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    restart: unless-stopped
+
+  config-server:
+    image: harsha79/config-server:latest
+    container_name: config-server
+    ports:
+      - "8888:8888"
+    depends_on:
+      - eureka-server
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    restart: unless-stopped
+
+  api-gateway:
+    image: harsha79/api-gateway:latest
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - eureka-server
+      - config-server
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    restart: unless-stopped
+
+networks:
+  default:
+    name: branch-picking-network
