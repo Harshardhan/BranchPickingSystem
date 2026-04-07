@@ -1,128 +1,204 @@
+# 🚀 Branch Picking System – Microservices Architecture
 
-# BranchPcikcingSystem
-🏪 Branch Picking System – Microservices Deployment with Docker Compose
-This project contains a complete microservices-based architecture for an Online Grocery Order Management System (BPS - Branch Picking System) built with Spring Boot, Docker, and various modern tools for monitoring, messaging, and logging.
+## 📌 Overview
 
-📦 Features
-Service Discovery with Eureka
+The **Branch Picking System** is a distributed microservices-based application built using **Spring Boot**, following modern cloud-native architecture principles.
 
-Centralized Configuration via Spring Cloud Config
+This project demonstrates:
 
-API Gateway for routing
+* Microservices architecture
+* Service discovery using Eureka
+* API Gateway routing
+* Centralized configuration
+* Docker & Docker Compose orchestration
+* Kubernetes deployment support
 
-Microservices:
+---
 
-Order Service
+## 🏗️ Architecture
 
-Product Service
+```
+Client → API Gateway → Microservices → Database
+                      ↓
+                 Eureka Server
+                      ↓
+               Config Server
+```
 
-Picking Service
+---
 
-Consolidation Service
+## 🧩 Services Included
 
-Notification Service
+| Service Name              | Description                         |
+| ------------------------- | ----------------------------------- |
+| API-Gateway               | Entry point for all client requests |
+| EurekaServerApp           | Service discovery                   |
+| ConfigServerApp           | Centralized configuration           |
+| ConfigRepo                | External configuration repository   |
+| UserRegistration          | User management service             |
+| OrderServiceApplication   | Order processing                    |
+| ProductServiceApplication | Product management                  |
+| PaymentApplication        | Payment handling                    |
+| NotificationService       | Notification system                 |
+| AnalyticsService          | Data analytics                      |
+| ConsolidationService      | Data aggregation                    |
+| Common-Library            | Shared utilities                    |
 
-Databases: MySQL (separate DBs per service)
+---
 
-Messaging: RabbitMQ and Apache Kafka
+## ⚙️ Technologies Used
 
-Monitoring: Prometheus and Grafana
+* Java 17
+* Spring Boot
+* Spring Cloud (Eureka, Config Server, Gateway)
+* Maven
+* Docker & Docker Compose
+* Kubernetes (k8s folder)
+* Prometheus (Monitoring)
+* Logstash (Logging)
 
-Logging: ELK Stack (Elasticsearch, Logstash, Kibana)
+---
 
-🛠 Prerequisites
-Docker
+## 🐳 Running with Docker Compose (Development)
 
-Docker Compose
+### 🔹 Prerequisites
 
-Ports 3306, 3307, 8080-8085, 8888, 8761, 9200, 5601, 9090, 3000, 9092, 15672 must be free
+* Docker installed
+* Docker Compose installed
 
-🚀 How to Run
-Clone the repository
+### 🔹 Run the application
 
-bash
-Copy
-Edit
-git clone https://github.com/your-username/branch-picking-system.git
-cd branch-picking-system
-Make sure .m2 directory is accessible
+```bash
+docker-compose -f docker-compose.dev.yml up --build
+```
 
-If you're on Windows:
+### 🔹 AWS Deployment
 
-yaml
-Copy
-Edit
-${USERPROFILE}/.m2:/root/.m2
-If you're on Linux/macOS, replace ${USERPROFILE} with $HOME or use a .env file:
+```bash
+docker-compose -f docker-compose.aws.yml up --build
+```
 
-bash
-Copy
-Edit
-echo "USERPROFILE=$HOME" > .env
-Build and Start All Services
+---
 
-bash
-Copy
-Edit
-docker-compose up --build
-Access the services
+## 🔗 Key Concepts
 
-Service	URL
-Eureka Discovery	http://localhost:8761
-Config Server	http://localhost:8888
-API Gateway	http://localhost:8080
-Order Service	http://localhost:8081
-Product Service	http://localhost:8082
-Picking Service	http://localhost:8083
-Consolidation Service	http://localhost:8084
-Notification Service	http://localhost:8085
-Kibana (Logs)	http://localhost:5601
-Prometheus (Metrics)	http://localhost:9090
-Grafana (Dashboards)	http://localhost:3000
-RabbitMQ Management UI	http://localhost:15672
-Kafka (internal)	kafka:9092
+### ✅ Service Communication
 
-📁 Project Structure
-Copy
-Edit
-.
-├── docker-compose.yml
+Services communicate using **service names**, not localhost.
+
+Example:
+
+```
+jdbc:mysql://mysql:3306/db
+```
+
+---
+
+### ✅ Service Discovery
+
+* Managed by **Eureka Server**
+* Services register automatically
+
+---
+
+### ✅ API Gateway
+
+* Routes all external requests
+* Provides centralized entry point
+
+---
+
+### ✅ Centralized Configuration
+
+* Managed using Config Server + ConfigRepo
+
+---
+
+## 📊 Monitoring & Logging
+
+* **Prometheus** → Metrics collection
+* **Logstash** → Log aggregation
+
+---
+
+## ☸️ Kubernetes Support
+
+Kubernetes configuration files are available in:
+
+```
+/k8s
+```
+
+To deploy:
+
+```bash
+kubectl apply -f k8s/
+```
+
+---
+
+## 📂 Project Structure
+
+```
+BranchPickingSystem/
+│
+├── API-Gateway/
 ├── EurekaServerApp/
 ├── ConfigServerApp/
-├── API-GateWay/
+├── ConfigRepo/
+├── UserRegistration/
 ├── OrderServiceApplication/
 ├── ProductServiceApplication/
-├── PickingService/
-├── ConsolidationService/
+├── PaymentApplication/
 ├── NotificationService/
-├── logstash.conf
-├── prometheus.yml
-📝 Notes
-Volumes are used for MySQL persistence and Maven dependency caching
+├── AnalyticsService/
+├── ConsolidationService/
+├── Common-Library/
+│
+├── docker-compose.dev.yml
+├── docker-compose.aws.yml
+├── k8s/
+├── README.md
+```
 
-Logstash reads logs from ./logs/api-gateway
+---
 
-Profiles: All apps use docker profile when running inside containers
+## 🧪 How to Test
 
-Kafka and RabbitMQ are both supported for notifications
+1. Start all services using Docker Compose
+2. Access API Gateway:
 
-🛑 To Stop and Remove All Containers
-bash
-Copy
-Edit
-docker-compose down -v
-This also deletes volumes (MySQL data).
+```
+http://localhost:<gateway-port>
+```
 
-✅ Troubleshooting
-Use docker-compose logs -f <service-name> to debug
+3. Call APIs via Gateway routes
 
-Ensure services like config-server and eureka-server start before others
+---
 
-If using Windows, Docker Desktop must be running
+## 🎯 Interview Highlights
 
-📚 Future Enhancements
-Add JWT-based security to API Gateway
+* Implemented **microservices architecture using Spring Boot**
+* Used **Eureka for service discovery**
+* Integrated **API Gateway for routing**
+* Managed configs using **Spring Cloud Config**
+* Containerized services using **Docker**
+* Orchestrated using **Docker Compose**
+* Prepared for **Kubernetes deployment**
 
-Auto-scale services using Kubernetes
+---
 
-Store logs in Elasticsearch from all microservices
+## 📌 Future Improvements
+
+* Add distributed tracing (Zipkin)
+* Implement circuit breaker (Resilience4j)
+* Add CI/CD pipeline
+* Improve security (OAuth2 / JWT)
+
+---
+
+## 👨‍💻 Author
+
+Developed as part of backend microservices practice and system design preparation.
+
+---
